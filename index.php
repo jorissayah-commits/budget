@@ -1,19 +1,4 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#0d0e14">
-    <title>Budget</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css">
-</head>
-<body>
+<?php $currentPage = 'depenses'; include 'includes/head.php'; ?>
 
 <div class="app">
 
@@ -51,7 +36,7 @@
 
 </div>
 
-<!-- Bouton ajouter (fixe) -->
+<!-- Bouton ajouter -->
 <div class="add-btn-wrapper">
     <button class="add-btn" id="addBtn">
         <span class="add-icon">+</span>
@@ -59,17 +44,7 @@
     </button>
 </div>
 
-<!-- Barre de navigation -->
-<nav class="bottom-nav">
-    <a href="index.php" class="bottom-nav-item active">
-        <span class="bottom-nav-icon">💸</span>
-        <span>Dépenses</span>
-    </a>
-    <a href="budget.php" class="bottom-nav-item">
-        <span class="bottom-nav-icon">📊</span>
-        <span>Budget</span>
-    </a>
-</nav>
+<?php include 'includes/nav.php'; ?>
 
 <!-- Modal ajout/édition dépense -->
 <div class="modal-overlay" id="modalOverlay" role="dialog" aria-modal="true">
@@ -94,10 +69,11 @@
             <div class="form-group">
                 <label>Payé par</label>
                 <div class="toggle-group" id="paidByGroup">
-                    <button type="button" class="toggle-btn active" data-value="Joris">Joris</button>
-                    <button type="button" class="toggle-btn" data-value="Sabrine">Sabrine</button>
+                    <?php foreach (MEMBERS as $m): ?>
+                        <button type="button" class="toggle-btn" data-value="<?= $m['name'] ?>"><?= $m['name'] ?></button>
+                    <?php endforeach; ?>
                 </div>
-                <input type="hidden" id="expensePaidBy" value="Joris">
+                <input type="hidden" id="expensePaidBy" value="<?= MEMBERS[0]['name'] ?>">
             </div>
             <div class="form-group">
                 <label>Type</label>
@@ -124,6 +100,7 @@
     </div>
 </div>
 
+<script src="js/shared.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

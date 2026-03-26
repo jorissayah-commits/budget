@@ -1,19 +1,14 @@
 'use strict';
 
-// ─── Constants ────────────────────────────────────────────────────
-const MONTHS_FR = [
-    'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
-];
-
 // ─── State ────────────────────────────────────────────────────────
 const now = new Date();
 let currentYear  = now.getFullYear();
 let currentMonth = now.getMonth();
 let editingId    = null;
 let allBudgets   = [];
+let expensesCache = []; // les dépenses du mois courant, pour lookup par ID
 
-// ─── Helpers ─────────────────────────────────────────────────────
+// ─── Month helpers ────────────────────────────────────────────────
 function getMonthKey() {
     return `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
 }
@@ -22,78 +17,23 @@ function getMonthTitle() {
     return `${MONTHS_FR[currentMonth]} ${currentYear}`;
 }
 
-function formatDayLabel(dateStr) {
-    const parts    = dateStr.split('-');
-    const monthIdx = parseInt(parts[1], 10) - 1;
-    const dayNum   = parseInt(parts[2], 10);
-    return `${dayNum} ${MONTHS_FR[monthIdx].substring(0, 3).toUpperCase()}`;
-}
-
-function formatAmount(val) {
-    return parseFloat(val).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-}
-
-function escapeHtml(str) {
-    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-function todayISO() {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-}
-
-// ─── API ─────────────────────────────────────────────────────────
-async function fetchExpenses(month) {
-    const res = await fetch(`/api/expenses.php?month=${encodeURIComponent(month)}`);
-    if (!res.ok) throw new Error('Erreur réseau');
-    return res.json();
-}
-
-async function fetchBudgets() {
-    const res = await fetch('/api/budgets.php');
-    if (!res.ok) throw new Error('Erreur réseau');
-    return res.json();
-}
-
-async function createExpense(data) {
-    const res = await fetch('/api/expenses.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || 'Erreur serveur');
-    return json;
-}
-
-async function updateExpense(id, data) {
-    const res = await fetch(`/api/expenses.php?id=${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || 'Erreur serveur');
-    return json;
-}
-
-async function removeExpense(id) {
-    const res = await fetch(`/api/expenses.php?id=${id}`, { method: 'DELETE' });
-    if (!res.ok) throw new Error('Erreur suppression');
-}
-
 // ─── Balance ──────────────────────────────────────────────────────
 function computeBalance(expenses) {
+    // net > 0 : member[1] doit à member[0] / net < 0 : member[0] doit à member[1]
+    const m0 = MEMBERS[0].name;
+    const m1 = MEMBERS[1].name;
     let net = 0;
+
     expenses.forEach(exp => {
         const amount  = parseFloat(exp.amount);
-        const paidBy  = exp.paid_by  || 'Joris';
-        const forWhom = (exp.for_whom || 'Joris,Sabrine').split(',').map(s => s.trim());
+        const paidBy  = exp.paid_by || m0;
+        const forWhom = (exp.for_whom || `${m0},${m1}`).split(',').map(s => s.trim());
         const share   = amount / forWhom.length;
+
         forWhom.forEach(person => {
             if (person !== paidBy) {
-                if (paidBy === 'Joris')   net += share;
-                if (paidBy === 'Sabrine') net -= share;
+                if (paidBy === m0) net += share;
+                if (paidBy === m1) net -= share;
             }
         });
     });
@@ -101,22 +41,26 @@ function computeBalance(expenses) {
 }
 
 function renderBalance(expenses) {
+    const m0  = MEMBERS[0].name;
+    const m1  = MEMBERS[1].name;
     const net = computeBalance(expenses);
     const el  = document.getElementById('balanceInfo');
+
     if (Math.abs(net) < 0.01) {
         el.innerHTML = `<span class="balance-neutral">Équilibre ✓</span>`;
         return;
     }
-    const debtor   = net > 0 ? 'Sabrine' : 'Joris';
-    const creditor = net > 0 ? 'Joris'   : 'Sabrine';
-    const cls      = net > 0 ? 'owes'    : 'owed';
+    const debtor   = net > 0 ? m1 : m0;
+    const creditor = net > 0 ? m0 : m1;
+    const cls      = net > 0 ? 'owes' : 'owed';
     el.innerHTML = `
         <div class="balance-name">${debtor} doit à ${creditor}</div>
         <div class="balance-amount ${cls}">${formatAmount(Math.abs(net))} €</div>`;
 }
 
-// ─── Render expenses ─────────────────────────────────────────────
+// ─── Render expenses ──────────────────────────────────────────────
 function renderExpenses(expenses) {
+    expensesCache = expenses;
     const container = document.getElementById('expensesContainer');
     const total = expenses.reduce((s, e) => s + parseFloat(e.amount), 0);
     document.getElementById('totalSpent').textContent = formatAmount(total);
@@ -127,6 +71,7 @@ function renderExpenses(expenses) {
         return;
     }
 
+    // Group by date
     const groups = {};
     expenses.forEach(exp => {
         if (!groups[exp.date]) groups[exp.date] = [];
@@ -134,25 +79,21 @@ function renderExpenses(expenses) {
     });
 
     let html = '';
-    Object.keys(groups).sort((a,b) => b.localeCompare(a)).forEach(date => {
+    Object.keys(groups).sort((a, b) => b.localeCompare(a)).forEach(date => {
         html += `<div class="date-group"><div class="date-label">${formatDayLabel(date)}</div>`;
         groups[date].forEach(exp => {
-            const paidBy     = exp.paid_by || 'Joris';
+            const paidBy     = exp.paid_by || MEMBERS[0].name;
             const payerClass = paidBy.toLowerCase();
             const budgetName = exp.budget_name || '';
             const budgetType = exp.budget_type || '';
             const typeLabel  = budgetType === 'commun' ? 'Commun' : 'Personnel';
-            const expData    = escapeHtml(JSON.stringify({
-                id: exp.id, name: exp.name, amount: exp.amount,
-                paid_by: paidBy, for_whom: exp.for_whom || 'Joris,Sabrine',
-                budget_id: exp.budget_id || '', budget_type: budgetType, date: exp.date
-            }));
+
             html += `
-            <div class="expense-item" data-expense="${expData}">
+            <div class="expense-item" data-id="${exp.id}">
                 <div class="expense-icon">${budgetType === 'commun' ? '🏠' : '👤'}</div>
                 <div class="expense-info">
                     <div class="expense-name">${escapeHtml(exp.name)}</div>
-                    <span class="expense-badge">${budgetName || typeLabel}</span>
+                    <span class="expense-badge">${escapeHtml(budgetName || typeLabel)}</span>
                     <span class="expense-payer ${payerClass}">${escapeHtml(paidBy)}</span>
                 </div>
                 <div class="expense-right">
@@ -165,10 +106,13 @@ function renderExpenses(expenses) {
     });
 
     container.innerHTML = html;
+
+    // Click → lookup from cache by ID (pas de JSON dans le DOM)
     container.querySelectorAll('.expense-item').forEach(item => {
         item.addEventListener('click', () => {
-            const exp = JSON.parse(item.dataset.expense.replace(/&quot;/g,'"').replace(/&amp;/g,'&'));
-            openEditModal(exp);
+            const id  = parseInt(item.dataset.id, 10);
+            const exp = expensesCache.find(e => e.id === id);
+            if (exp) openEditModal(exp);
         });
     });
 }
@@ -177,7 +121,7 @@ async function loadExpenses() {
     const container = document.getElementById('expensesContainer');
     container.innerHTML = '<div class="loading">Chargement…</div>';
     try {
-        const expenses = await fetchExpenses(getMonthKey());
+        const expenses = await apiFetch(`/api/expenses.php?month=${encodeURIComponent(getMonthKey())}`);
         renderExpenses(expenses);
     } catch {
         container.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><p>Impossible de charger</p></div>`;
@@ -204,12 +148,8 @@ document.getElementById('nextMonth').addEventListener('click', () => {
 // ─── Budget picker ────────────────────────────────────────────────
 function renderBudgetPicker(selectedType, selectedId = null) {
     const picker = document.getElementById('budgetPicker');
-
-    // Filter budgets : commun → type commun, personnel → perso_joris + perso_sabrine
     const filtered = allBudgets.filter(b =>
-        selectedType === 'commun'
-            ? b.type === 'commun'
-            : b.type === 'perso_joris' || b.type === 'perso_sabrine'
+        selectedType === 'commun' ? b.type === 'commun' : b.type.startsWith('perso_')
     );
 
     if (filtered.length === 0) {
@@ -220,14 +160,15 @@ function renderBudgetPicker(selectedType, selectedId = null) {
 
     picker.innerHTML = filtered.map(b => {
         const active = String(b.id) === String(selectedId) ? 'active' : '';
-        const sub    = b.type === 'perso_joris' ? 'Joris' : b.type === 'perso_sabrine' ? 'Sabrine' : '';
+        const memberId = getMemberIdFromBudgetType(b.type);
+        const sub = memberId ? getMemberName(memberId) : '';
         return `<button type="button" class="budget-pick-btn ${active}" data-id="${b.id}">
             <span class="budget-pick-name">${escapeHtml(b.name)}</span>
             ${sub ? `<span class="budget-pick-sub">${sub}</span>` : ''}
         </button>`;
     }).join('');
 
-    // Auto-select first if none selected
+    // Auto-select first if none matched
     if (!selectedId || !filtered.find(b => String(b.id) === String(selectedId))) {
         const first = picker.querySelector('.budget-pick-btn');
         if (first) { first.classList.add('active'); document.getElementById('expenseBudgetId').value = first.dataset.id; }
@@ -243,35 +184,12 @@ function renderBudgetPicker(selectedType, selectedId = null) {
 }
 
 // ─── Modal ────────────────────────────────────────────────────────
-const overlay = document.getElementById('modalOverlay');
-const modal   = document.getElementById('modal');
+const { modal, open: openOverlay, close: closeOverlay } = initModal('modalOverlay', 'modal', 'modalClose');
 
-function setToggle(groupId, values, hiddenId) {
-    const vals = Array.isArray(values) ? values : [values];
-    document.querySelectorAll(`#${groupId} .toggle-btn`).forEach(btn => {
-        btn.classList.toggle('active', vals.includes(btn.dataset.value));
-    });
-    if (hiddenId) document.getElementById(hiddenId).value = vals[0];
-}
-
-function initToggleGroups() {
-    // Payé par — single
-    document.querySelectorAll('#paidByGroup .toggle-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            setToggle('paidByGroup', [btn.dataset.value], 'expensePaidBy');
-        });
-    });
-
-    // Type (commun/personnel) — single, met à jour le picker
-    document.querySelectorAll('#expenseTypeGroup .toggle-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            setToggle('expenseTypeGroup', [btn.dataset.value], 'expenseType');
-            renderBudgetPicker(btn.dataset.value);
-        });
-    });
-}
-
-initToggleGroups();
+const paidByToggle  = initToggleGroup('paidByGroup',     'expensePaidBy');
+const typeToggle    = initToggleGroup('expenseTypeGroup', 'expenseType', {
+    onChange: val => renderBudgetPicker(val)
+});
 
 function openAddModal() {
     editingId = null;
@@ -280,10 +198,10 @@ function openAddModal() {
     document.getElementById('submitBtn').textContent  = 'Ajouter';
     document.getElementById('expenseForm').reset();
     document.getElementById('expenseDate').value = todayISO();
-    setToggle('paidByGroup',    ['Joris'],   'expensePaidBy');
-    setToggle('expenseTypeGroup',['commun'], 'expenseType');
+    paidByToggle.setValues([MEMBERS[0].name]);
+    typeToggle.setValues(['commun']);
     renderBudgetPicker('commun');
-    overlay.classList.add('active');
+    openOverlay();
     setTimeout(() => document.getElementById('expenseName').focus(), 350);
 }
 
@@ -297,54 +215,58 @@ function openEditModal(exp) {
     document.getElementById('expenseDate').value      = exp.date;
 
     const type = exp.budget_type === 'commun' ? 'commun' : (exp.budget_id ? 'personnel' : 'commun');
-    setToggle('paidByGroup',     [exp.paid_by || 'Joris'], 'expensePaidBy');
-    setToggle('expenseTypeGroup',[type],                   'expenseType');
+    paidByToggle.setValues([exp.paid_by || MEMBERS[0].name]);
+    typeToggle.setValues([type]);
     renderBudgetPicker(type, exp.budget_id);
-    overlay.classList.add('active');
+    openOverlay();
     setTimeout(() => document.getElementById('expenseName').focus(), 350);
 }
 
 function closeModal() {
-    overlay.classList.remove('active');
-    modal.classList.remove('edit-mode');
+    closeOverlay();
     document.getElementById('expenseForm').reset();
     document.getElementById('submitBtn').disabled = false;
     editingId = null;
 }
 
-document.getElementById('addBtn').addEventListener('click', openAddModal);
+// Re-bind close to our extended version
 document.getElementById('modalClose').addEventListener('click', closeModal);
-overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+document.getElementById('addBtn').addEventListener('click', openAddModal);
 
+// ─── Delete ──────────────────────────────────────────────────────
 document.getElementById('deleteBtn').addEventListener('click', async () => {
     if (!editingId || !confirm('Supprimer cette dépense ?')) return;
     try {
-        await removeExpense(editingId);
+        await apiDelete(`/api/expenses.php?id=${editingId}`);
         closeModal(); loadExpenses();
     } catch { alert('Impossible de supprimer.'); }
 });
 
+// ─── Submit ──────────────────────────────────────────────────────
 document.getElementById('expenseForm').addEventListener('submit', async e => {
     e.preventDefault();
     const name      = document.getElementById('expenseName').value.trim();
     const amount    = parseFloat(document.getElementById('expenseAmount').value);
-    const paid_by   = document.getElementById('expensePaidBy').value;
-    const expType   = document.getElementById('expenseType').value;
+    const paid_by   = paidByToggle.getValue();
+    const expType   = typeToggle.getValue();
     const budget_id = document.getElementById('expenseBudgetId').value;
-
-    let for_whom;
-    if (expType === 'commun') {
-        for_whom = 'Joris,Sabrine';
-    } else {
-        const budget = allBudgets.find(b => String(b.id) === String(budget_id));
-        for_whom = budget
-            ? (budget.type === 'perso_joris' ? 'Joris' : 'Sabrine')
-            : paid_by;
-    }
     const date      = document.getElementById('expenseDate').value;
 
     if (!name || isNaN(amount) || amount <= 0) return;
+
+    // Dérivation automatique de for_whom
+    let for_whom;
+    if (expType === 'commun') {
+        for_whom = MEMBERS.map(m => m.name).join(',');
+    } else {
+        const budget = allBudgets.find(b => String(b.id) === String(budget_id));
+        if (budget) {
+            const memberId = getMemberIdFromBudgetType(budget.type);
+            for_whom = memberId ? getMemberName(memberId) : paid_by;
+        } else {
+            for_whom = paid_by;
+        }
+    }
 
     const btn = document.getElementById('submitBtn');
     btn.disabled = true;
@@ -352,8 +274,8 @@ document.getElementById('expenseForm').addEventListener('submit', async e => {
 
     try {
         const data = { name, amount, paid_by, for_whom, budget_id, date };
-        if (editingId) await updateExpense(editingId, data);
-        else           await createExpense(data);
+        const url  = editingId ? `/api/expenses.php?id=${editingId}` : '/api/expenses.php';
+        await apiSend(url, editingId ? 'PUT' : 'POST', data);
         closeModal(); loadExpenses();
     } catch (err) {
         alert('Erreur : ' + err.message);
@@ -364,5 +286,5 @@ document.getElementById('expenseForm').addEventListener('submit', async e => {
 
 // ─── Init ─────────────────────────────────────────────────────────
 updateMonthDisplay();
-fetchBudgets().then(b => { allBudgets = b; }).catch(() => {});
+apiFetch('/api/budgets.php').then(b => { allBudgets = b; }).catch(() => {});
 loadExpenses();

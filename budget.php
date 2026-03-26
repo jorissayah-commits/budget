@@ -1,19 +1,4 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#0d0e14">
-    <title>Budget</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css">
-</head>
-<body>
+<?php $currentPage = 'budget'; include 'includes/head.php'; ?>
 
 <div class="app">
     <header class="page-header">
@@ -31,17 +16,7 @@
     </button>
 </div>
 
-<!-- Barre de navigation -->
-<nav class="bottom-nav">
-    <a href="index.php" class="bottom-nav-item">
-        <span class="bottom-nav-icon">💸</span>
-        <span>Dépenses</span>
-    </a>
-    <a href="budget.php" class="bottom-nav-item active">
-        <span class="bottom-nav-icon">📊</span>
-        <span>Budget</span>
-    </a>
-</nav>
+<?php include 'includes/nav.php'; ?>
 
 <!-- Modal budget -->
 <div class="modal-overlay" id="modalOverlay" role="dialog" aria-modal="true">
@@ -67,8 +42,9 @@
                 <label>Type</label>
                 <div class="toggle-group" id="budgetTypeGroup">
                     <button type="button" class="toggle-btn active" data-value="commun">Commun</button>
-                    <button type="button" class="toggle-btn" data-value="perso_joris">Perso Joris</button>
-                    <button type="button" class="toggle-btn" data-value="perso_sabrine">Perso Sabrine</button>
+                    <?php foreach (MEMBERS as $m): ?>
+                        <button type="button" class="toggle-btn" data-value="perso_<?= $m['id'] ?>">Perso <?= $m['name'] ?></button>
+                    <?php endforeach; ?>
                 </div>
                 <input type="hidden" id="budgetType" value="commun">
             </div>
@@ -78,6 +54,7 @@
     </div>
 </div>
 
+<script src="js/shared.js"></script>
 <script src="js/budget.js"></script>
 </body>
 </html>

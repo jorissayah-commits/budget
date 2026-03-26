@@ -4,8 +4,28 @@ header('Content-Type: application/json; charset=utf-8');
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') exit(0);
 
 require_once __DIR__ . '/../db/database.php';
+require_once __DIR__ . '/../includes/config.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
+$allowedTypes = getAllowedBudgetTypes();
+
+/**
+ * Parse et valide les champs d'un budget depuis le body JSON.
+ */
+function parseBudgetInput(array $allowedTypes): ?array {
+    $data   = json_decode(file_get_contents('php://input'), true);
+    $name   = trim($data['name'] ?? '');
+    $amount = floatval($data['amount'] ?? 0);
+    $type   = trim($data['type'] ?? '');
+
+    if (empty($name))  { http_response_code(400); echo json_encode(['error' => 'Nom requis']); return null; }
+    if ($amount <= 0)   { http_response_code(400); echo json_encode(['error' => 'Montant invalide']); return null; }
+    if (!in_array($type, $allowedTypes)) {
+        http_response_code(400); echo json_encode(['error' => 'Type invalide']); return null;
+    }
+
+    return compact('name', 'amount', 'type');
+}
 
 switch ($method) {
     case 'GET':
@@ -14,41 +34,25 @@ switch ($method) {
         break;
 
     case 'POST':
-        $data   = json_decode(file_get_contents('php://input'), true);
-        $name   = trim($data['name'] ?? '');
-        $amount = floatval($data['amount'] ?? 0);
-        $type   = trim($data['type'] ?? '');
-
-        if (empty($name)) { http_response_code(400); echo json_encode(['error' => 'Nom requis']); break; }
-        if ($amount <= 0) { http_response_code(400); echo json_encode(['error' => 'Montant invalide']); break; }
-        if (!in_array($type, ['commun', 'perso_joris', 'perso_sabrine'])) {
-            http_response_code(400); echo json_encode(['error' => 'Type invalide']); break;
-        }
+        $input = parseBudgetInput($allowedTypes);
+        if (!$input) break;
 
         $stmt = $pdo->prepare("INSERT INTO budgets (name, amount, type) VALUES (?, ?, ?)");
-        $stmt->execute([$name, $amount, $type]);
-        $id = $pdo->lastInsertId();
+        $stmt->execute([$input['name'], $input['amount'], $input['type']]);
         $stmt = $pdo->prepare("SELECT * FROM budgets WHERE id = ?");
-        $stmt->execute([$id]);
+        $stmt->execute([$pdo->lastInsertId()]);
         echo json_encode($stmt->fetch());
         break;
 
     case 'PUT':
-        $id     = intval($_GET['id'] ?? 0);
-        $data   = json_decode(file_get_contents('php://input'), true);
-        $name   = trim($data['name'] ?? '');
-        $amount = floatval($data['amount'] ?? 0);
-        $type   = trim($data['type'] ?? '');
+        $id = intval($_GET['id'] ?? 0);
+        if ($id <= 0) { http_response_code(400); echo json_encode(['error' => 'ID invalide']); break; }
 
-        if ($id <= 0)      { http_response_code(400); echo json_encode(['error' => 'ID invalide']); break; }
-        if (empty($name))  { http_response_code(400); echo json_encode(['error' => 'Nom requis']); break; }
-        if ($amount <= 0)  { http_response_code(400); echo json_encode(['error' => 'Montant invalide']); break; }
-        if (!in_array($type, ['commun', 'perso_joris', 'perso_sabrine'])) {
-            http_response_code(400); echo json_encode(['error' => 'Type invalide']); break;
-        }
+        $input = parseBudgetInput($allowedTypes);
+        if (!$input) break;
 
         $stmt = $pdo->prepare("UPDATE budgets SET name=?, amount=?, type=? WHERE id=?");
-        $stmt->execute([$name, $amount, $type, $id]);
+        $stmt->execute([$input['name'], $input['amount'], $input['type'], $id]);
         $stmt = $pdo->prepare("SELECT * FROM budgets WHERE id = ?");
         $stmt->execute([$id]);
         echo json_encode($stmt->fetch());
