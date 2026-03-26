@@ -20,6 +20,9 @@
     --radius-card:   18px;
     --radius-pill:   50px;
     --safe-bottom:   env(safe-area-inset-bottom, 0px);
+
+    /* Hauteur de la barre de navigation — à mettre à jour ici uniquement */
+    --nav-height:    62px;
 }
 
 html {
@@ -41,7 +44,7 @@ body {
     max-width: 480px;
     margin: 0 auto;
     padding: 0 16px;
-    padding-bottom: calc(160px + var(--safe-bottom));
+    padding-bottom: calc(var(--nav-height) + var(--safe-bottom) + 90px);
 }
 
 /* ─── Month Navigation ──────────────────────────────────────────── */
@@ -285,7 +288,7 @@ body {
 /* ─── Add Button (fixed bottom) ─────────────────────────────────── */
 .add-btn-wrapper {
     position: fixed;
-    bottom: calc(62px + var(--safe-bottom));
+    bottom: calc(var(--nav-height) + var(--safe-bottom));
     left: 50%;
     transform: translateX(-50%);
     width: 100%;
