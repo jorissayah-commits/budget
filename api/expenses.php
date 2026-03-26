@@ -32,6 +32,8 @@ switch ($method) {
         $name     = trim($data['name'] ?? '');
         $amount   = floatval($data['amount'] ?? 0);
         $category = trim($data['category'] ?? 'Perso');
+        $paid_by  = trim($data['paid_by'] ?? 'Joris');
+        $for_whom = trim($data['for_whom'] ?? 'Joris,Sabrine');
         $date     = $data['date'] ?? date('Y-m-d');
 
         if (empty($name)) {
@@ -50,8 +52,8 @@ switch ($method) {
             break;
         }
 
-        $stmt = $pdo->prepare("INSERT INTO expenses (name, amount, category, date) VALUES (?, ?, ?, ?)");
-        $stmt->execute([$name, $amount, $category, $date]);
+        $stmt = $pdo->prepare("INSERT INTO expenses (name, amount, category, paid_by, for_whom, date) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$name, $amount, $category, $paid_by, $for_whom, $date]);
 
         $id = $pdo->lastInsertId();
         $stmt = $pdo->prepare("SELECT * FROM expenses WHERE id = ?");
@@ -70,6 +72,8 @@ switch ($method) {
         $name     = trim($data['name'] ?? '');
         $amount   = floatval($data['amount'] ?? 0);
         $category = trim($data['category'] ?? 'Perso');
+        $paid_by  = trim($data['paid_by'] ?? 'Joris');
+        $for_whom = trim($data['for_whom'] ?? 'Joris,Sabrine');
         $date     = $data['date'] ?? date('Y-m-d');
 
         if (empty($name)) {
@@ -88,8 +92,8 @@ switch ($method) {
             break;
         }
 
-        $stmt = $pdo->prepare("UPDATE expenses SET name=?, amount=?, category=?, date=? WHERE id=?");
-        $stmt->execute([$name, $amount, $category, $date, $id]);
+        $stmt = $pdo->prepare("UPDATE expenses SET name=?, amount=?, category=?, paid_by=?, for_whom=?, date=? WHERE id=?");
+        $stmt->execute([$name, $amount, $category, $paid_by, $for_whom, $date, $id]);
 
         $stmt = $pdo->prepare("SELECT * FROM expenses WHERE id = ?");
         $stmt->execute([$id]);

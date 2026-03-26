@@ -103,6 +103,34 @@ body {
     margin-bottom: 10px;
 }
 
+.balance-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 36px;
+}
+
+.balance-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+}
+
+.balance-amount {
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.balance-amount.owes { color: #ff6b9d; }
+.balance-amount.owed { color: #4a9eff; }
+
+.balance-neutral {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
 .stat-amount {
     display: flex;
     align-items: baseline;
@@ -202,6 +230,18 @@ body {
     color: var(--accent-badge-text);
     letter-spacing: 0.02em;
 }
+
+.expense-payer {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-left: 5px;
+}
+
+.expense-payer.joris   { background: rgba(74,158,255,0.15); color: #4a9eff; }
+.expense-payer.sabrine { background: rgba(255,107,157,0.15); color: #ff6b9d; }
 
 .expense-right {
     display: flex;
@@ -484,6 +524,33 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 .modal.edit-mode .delete-btn {
     display: block;
+}
+
+/* ─── Toggle buttons (Payé par / Pour) ───────────────────────────── */
+.toggle-group {
+    display: flex;
+    gap: 8px;
+}
+
+.toggle-btn {
+    flex: 1;
+    background: var(--bg);
+    border: 1.5px solid var(--card-border);
+    border-radius: 12px;
+    padding: 11px;
+    color: var(--text-secondary);
+    font-size: 15px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.toggle-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
 }
 
 /* ─── Loading state ──────────────────────────────────────────────── */

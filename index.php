@@ -25,12 +25,18 @@
     </header>
 
     <!-- Cartes stats -->
-    <div class="stats-grid stats-grid--single">
+    <div class="stats-grid">
         <div class="stat-card">
             <span class="stat-label">Dépensé ce mois</span>
             <div class="stat-amount">
                 <span class="stat-value" id="totalSpent">0</span>
                 <span class="stat-currency">€</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">Solde</span>
+            <div class="balance-info" id="balanceInfo">
+                <span class="balance-neutral">—</span>
             </div>
         </div>
     </div>
@@ -72,6 +78,22 @@
                     <input type="number" id="expenseAmount" placeholder="0,00" step="0.01" min="0.01" inputmode="decimal" required>
                     <span class="input-suffix">€</span>
                 </div>
+            </div>
+            <div class="form-group">
+                <label>Payé par</label>
+                <div class="toggle-group" id="paidByGroup">
+                    <button type="button" class="toggle-btn active" data-value="Joris">Joris</button>
+                    <button type="button" class="toggle-btn" data-value="Sabrine">Sabrine</button>
+                </div>
+                <input type="hidden" id="expensePaidBy" value="Joris">
+            </div>
+            <div class="form-group">
+                <label>Pour</label>
+                <div class="toggle-group" id="forWhomGroup">
+                    <button type="button" class="toggle-btn active" data-value="Joris">Joris</button>
+                    <button type="button" class="toggle-btn active" data-value="Sabrine">Sabrine</button>
+                </div>
+                <input type="hidden" id="expenseForWhom" value="Joris,Sabrine">
             </div>
             <div class="form-group">
                 <label for="expenseCategory">Catégorie</label>

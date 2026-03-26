@@ -22,6 +22,8 @@ let currentYear  = now.getFullYear();
 let currentMonth = now.getMonth(); // 0-indexed
 let editingId    = null; // null = création, number = édition
 
+const PEOPLE = ['Joris', 'Sabrine'];
+
 // ─── Helpers ─────────────────────────────────────────────────────
 function getMonthKey() {
     return `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
@@ -95,12 +97,49 @@ async function removeExpense(id) {
     if (!res.ok) throw new Error('Erreur suppression');
 }
 
+// ─── Balance calculation ─────────────────────────────────────────
+function computeBalance(expenses) {
+    // net > 0 : Sabrine doit à Joris / net < 0 : Joris doit à Sabrine
+    let net = 0;
+    expenses.forEach(exp => {
+        const amount   = parseFloat(exp.amount);
+        const paidBy   = exp.paid_by   || 'Joris';
+        const forWhom  = (exp.for_whom || 'Joris,Sabrine').split(',').map(s => s.trim());
+        const share    = amount / forWhom.length;
+
+        forWhom.forEach(person => {
+            if (person !== paidBy) {
+                // "person" doit "share" à "paidBy"
+                if (paidBy === 'Joris')   net += share; // Sabrine doit à Joris
+                if (paidBy === 'Sabrine') net -= share; // Joris doit à Sabrine
+            }
+        });
+    });
+    return net;
+}
+
+function renderBalance(expenses) {
+    const net  = computeBalance(expenses);
+    const el   = document.getElementById('balanceInfo');
+    if (Math.abs(net) < 0.01) {
+        el.innerHTML = `<span class="balance-neutral">Équilibre ✓</span>`;
+        return;
+    }
+    const debtor  = net > 0 ? 'Sabrine' : 'Joris';
+    const creditor = net > 0 ? 'Joris'  : 'Sabrine';
+    const cssClass = net > 0 ? 'owes'   : 'owed';
+    el.innerHTML = `
+        <div class="balance-name">${debtor} doit à ${creditor}</div>
+        <div class="balance-amount ${cssClass}">${formatAmount(Math.abs(net))} €</div>`;
+}
+
 // ─── Render ──────────────────────────────────────────────────────
 function renderExpenses(expenses) {
     const container = document.getElementById('expensesContainer');
 
     const total = expenses.reduce((sum, e) => sum + parseFloat(e.amount), 0);
     document.getElementById('totalSpent').textContent = formatAmount(total);
+    renderBalance(expenses);
 
     if (expenses.length === 0) {
         container.innerHTML = `
@@ -126,20 +165,22 @@ function renderExpenses(expenses) {
         html += `<div class="date-label">${formatDayLabel(date)}</div>`;
 
         groups[date].forEach(exp => {
-            const icon   = CATEGORY_ICONS[exp.category] || '📦';
-            const amount = formatAmount(exp.amount);
+            const icon      = CATEGORY_ICONS[exp.category] || '📦';
+            const amount    = formatAmount(exp.amount);
+            const paidBy    = exp.paid_by || 'Joris';
+            const payerClass = paidBy.toLowerCase();
+            const expData   = escapeHtml(JSON.stringify({
+                id: exp.id, name: exp.name, amount: exp.amount,
+                category: exp.category, paid_by: paidBy,
+                for_whom: exp.for_whom || 'Joris,Sabrine', date: exp.date
+            }));
             html += `
-            <div class="expense-item" data-id="${exp.id}" data-expense='${JSON.stringify({
-                id: exp.id,
-                name: exp.name,
-                amount: exp.amount,
-                category: exp.category,
-                date: exp.date
-            })}'>
+            <div class="expense-item" data-id="${exp.id}" data-expense="${expData}">
                 <div class="expense-icon">${icon}</div>
                 <div class="expense-info">
                     <div class="expense-name">${escapeHtml(exp.name)}</div>
                     <span class="expense-badge">${escapeHtml(exp.category)}</span>
+                    <span class="expense-payer ${payerClass}">${escapeHtml(paidBy)}</span>
                 </div>
                 <div class="expense-right">
                     <span class="expense-amount">${amount}&nbsp;€</span>
@@ -158,7 +199,7 @@ function renderExpenses(expenses) {
 function attachExpenseListeners() {
     document.querySelectorAll('.expense-item').forEach(item => {
         item.addEventListener('click', () => {
-            const exp = JSON.parse(item.dataset.expense);
+            const exp = JSON.parse(item.dataset.expense.replace(/&quot;/g, '"').replace(/&amp;/g, '&'));
             openEditModal(exp);
         });
     });
@@ -210,6 +251,8 @@ function openAddModal() {
     document.getElementById('modalTitle').textContent = 'Nouvelle dépense';
     document.getElementById('submitBtn').textContent  = 'Ajouter';
     document.getElementById('expenseDate').value = todayISO();
+    setToggle('paidByGroup',  ['Joris'],            false);
+    setToggle('forWhomGroup', ['Joris', 'Sabrine'], true);
     overlay.classList.add('active');
     setTimeout(() => document.getElementById('expenseName').focus(), 350);
 }
@@ -217,12 +260,14 @@ function openAddModal() {
 function openEditModal(exp) {
     editingId = exp.id;
     modal.classList.add('edit-mode');
-    document.getElementById('modalTitle').textContent       = 'Modifier la dépense';
-    document.getElementById('submitBtn').textContent        = 'Enregistrer';
-    document.getElementById('expenseName').value            = exp.name;
-    document.getElementById('expenseAmount').value          = exp.amount;
-    document.getElementById('expenseCategory').value        = exp.category;
-    document.getElementById('expenseDate').value            = exp.date;
+    document.getElementById('modalTitle').textContent = 'Modifier la dépense';
+    document.getElementById('submitBtn').textContent  = 'Enregistrer';
+    document.getElementById('expenseName').value      = exp.name;
+    document.getElementById('expenseAmount').value    = exp.amount;
+    document.getElementById('expenseCategory').value  = exp.category;
+    document.getElementById('expenseDate').value      = exp.date;
+    setToggle('paidByGroup',  [exp.paid_by || 'Joris'], false);
+    setToggle('forWhomGroup', (exp.for_whom || 'Joris,Sabrine').split(',').map(s => s.trim()), true);
     overlay.classList.add('active');
     setTimeout(() => document.getElementById('expenseName').focus(), 350);
 }
@@ -234,6 +279,45 @@ function closeModal() {
     document.getElementById('submitBtn').disabled = false;
     editingId = null;
 }
+
+// ─── Toggle buttons ───────────────────────────────────────────────
+function initToggleGroups() {
+    // Payé par — single select
+    document.querySelectorAll('#paidByGroup .toggle-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#paidByGroup .toggle-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('expensePaidBy').value = btn.dataset.value;
+        });
+    });
+
+    // Pour — multi select (au moins 1 requis)
+    document.querySelectorAll('#forWhomGroup .toggle-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const active = document.querySelectorAll('#forWhomGroup .toggle-btn.active');
+            // Empêche de tout décocher
+            if (btn.classList.contains('active') && active.length === 1) return;
+            btn.classList.toggle('active');
+            const selected = [...document.querySelectorAll('#forWhomGroup .toggle-btn.active')]
+                .map(b => b.dataset.value).join(',');
+            document.getElementById('expenseForWhom').value = selected;
+        });
+    });
+}
+
+function setToggle(groupId, values, multi = false) {
+    const vals = Array.isArray(values) ? values : [values];
+    document.querySelectorAll(`#${groupId} .toggle-btn`).forEach(btn => {
+        btn.classList.toggle('active', vals.includes(btn.dataset.value));
+    });
+    if (multi) {
+        document.getElementById('expenseForWhom').value = vals.join(',');
+    } else {
+        document.getElementById('expensePaidBy').value = vals[0];
+    }
+}
+
+initToggleGroups();
 
 document.getElementById('addBtn').addEventListener('click', openAddModal);
 document.getElementById('modalClose').addEventListener('click', closeModal);
@@ -275,11 +359,14 @@ document.getElementById('expenseForm').addEventListener('submit', async (e) => {
     btn.disabled = true;
     btn.textContent = editingId ? 'Enregistrement…' : 'Ajout…';
 
+    const paid_by  = document.getElementById('expensePaidBy').value;
+    const for_whom = document.getElementById('expenseForWhom').value;
+
     try {
         if (editingId) {
-            await updateExpense(editingId, { name, amount, category, date });
+            await updateExpense(editingId, { name, amount, category, paid_by, for_whom, date });
         } else {
-            await createExpense({ name, amount, category, date });
+            await createExpense({ name, amount, category, paid_by, for_whom, date });
         }
         closeModal();
         await loadExpenses();
