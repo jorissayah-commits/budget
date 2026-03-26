@@ -1,4 +1,7 @@
-<?php require_once __DIR__ . '/config.php'; ?>
+<?php
+require_once __DIR__ . '/auth.php';
+$currentUser = requireAuth();
+?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -19,6 +22,7 @@
 <script>
     window.APP_CONFIG = {
         members: <?= json_encode(MEMBERS) ?>,
-        budgetTypes: <?= json_encode(getAllowedBudgetTypes()) ?>
+        budgetTypes: <?= json_encode(getAllowedBudgetTypes()) ?>,
+        currentUser: <?= json_encode($currentUser) ?>
     };
 </script>

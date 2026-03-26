@@ -73,7 +73,7 @@
                         <button type="button" class="toggle-btn" data-value="<?= $m['name'] ?>"><?= $m['name'] ?></button>
                     <?php endforeach; ?>
                 </div>
-                <input type="hidden" id="expensePaidBy" value="<?= MEMBERS[0]['name'] ?>">
+                <input type="hidden" id="expensePaidBy" value="<?= $currentUser['name'] ?>">
             </div>
             <div class="form-group">
                 <label>Type</label>

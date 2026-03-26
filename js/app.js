@@ -198,7 +198,7 @@ function openAddModal() {
     document.getElementById('submitBtn').textContent  = 'Ajouter';
     document.getElementById('expenseForm').reset();
     document.getElementById('expenseDate').value = todayISO();
-    paidByToggle.setValues([MEMBERS[0].name]);
+    paidByToggle.setValues([CURRENT_USER.name]);
     typeToggle.setValues(['commun']);
     renderBudgetPicker('commun');
     openOverlay();

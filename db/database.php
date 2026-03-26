@@ -34,7 +34,15 @@ try {
         )
     ");
 
-    // Migrations
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            password_hash TEXT NOT NULL
+        )
+    ");
+
+    // Migrations pour tables existantes
     $migrations = [
         'paid_by TEXT DEFAULT \'Joris\'',
         'for_whom TEXT DEFAULT \'Joris,Sabrine\'',
@@ -42,6 +50,13 @@ try {
     ];
     foreach ($migrations as $col) {
         try { $pdo->exec("ALTER TABLE expenses ADD COLUMN $col"); } catch (PDOException $e) {}
+    }
+
+    // Seed des utilisateurs (INSERT OR IGNORE = exécuté une seule fois)
+    require_once __DIR__ . '/../includes/config.php';
+    $stmt = $pdo->prepare("INSERT OR IGNORE INTO users (id, name, password_hash) VALUES (?, ?, ?)");
+    foreach (MEMBERS as $m) {
+        $stmt->execute([$m['id'], $m['name'], password_hash('aaa', PASSWORD_DEFAULT)]);
     }
 
 } catch (PDOException $e) {

@@ -4,10 +4,12 @@ header('Content-Type: application/json; charset=utf-8');
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') exit(0);
 
 require_once __DIR__ . '/../db/database.php';
-require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/auth.php';
+$currentUser = requireAuth(true);
 
 $method = $_SERVER['REQUEST_METHOD'];
 $allowedTypes = getAllowedBudgetTypes();
+$userPersoType = 'perso_' . $currentUser['id'];
 
 /**
  * Parse et valide les champs d'un budget depuis le body JSON.
@@ -29,7 +31,13 @@ function parseBudgetInput(array $allowedTypes): ?array {
 
 switch ($method) {
     case 'GET':
-        $stmt = $pdo->query("SELECT * FROM budgets ORDER BY type, name");
+        // L'utilisateur voit : budgets communs + ses budgets perso
+        $stmt = $pdo->prepare("
+            SELECT * FROM budgets
+            WHERE type = 'commun' OR type = ?
+            ORDER BY type, name
+        ");
+        $stmt->execute([$userPersoType]);
         echo json_encode($stmt->fetchAll());
         break;
 

@@ -60,9 +60,17 @@ function getMemberIdFromBudgetType(budgetType) {
     return null;
 }
 
+// ─── Current user shortcut ───────────────────────────────────────
+const CURRENT_USER = window.APP_CONFIG.currentUser; // {id, name}
+
 // ─── API helpers ─────────────────────────────────────────────────
+function checkAuth(res) {
+    if (res.status === 401) { window.location.href = '/login.php'; throw new Error('Non authentifié'); }
+}
+
 async function apiFetch(url) {
     const res = await fetch(url);
+    checkAuth(res);
     if (!res.ok) throw new Error('Erreur réseau');
     return res.json();
 }
@@ -73,6 +81,7 @@ async function apiSend(url, method, data) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     });
+    checkAuth(res);
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || 'Erreur serveur');
     return json;
@@ -80,6 +89,7 @@ async function apiSend(url, method, data) {
 
 async function apiDelete(url) {
     const res = await fetch(url, { method: 'DELETE' });
+    checkAuth(res);
     if (!res.ok) throw new Error('Erreur suppression');
 }
 

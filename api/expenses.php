@@ -4,13 +4,13 @@ header('Content-Type: application/json; charset=utf-8');
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') exit(0);
 
 require_once __DIR__ . '/../db/database.php';
-require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/auth.php';
+$currentUser = requireAuth(true);
 
 $method = $_SERVER['REQUEST_METHOD'];
 
 /**
  * Parse et valide les champs d'une dépense depuis le body JSON.
- * Retourne les données ou envoie une erreur 400 et retourne null.
  */
 function parseExpenseInput(): ?array {
     $data      = json_decode(file_get_contents('php://input'), true);
@@ -42,20 +42,26 @@ function fetchExpenseWithBudget(PDO $pdo, int $id): array|false {
     return $stmt->fetch();
 }
 
+$userName = $currentUser['name'];
+
 switch ($method) {
     case 'GET':
         $month = $_GET['month'] ?? date('Y-m');
         if (!preg_match('/^\d{4}-\d{2}$/', $month)) {
             http_response_code(400); echo json_encode(['error' => 'Format de mois invalide']); break;
         }
+        // L'utilisateur voit : les dépenses communes + ses dépenses personnelles
+        // for_whom contient son nom → il voit la dépense
+        // paid_by = son nom → il voit aussi (il a payé)
         $stmt = $pdo->prepare("
             SELECT e.*, b.name AS budget_name, b.type AS budget_type
             FROM expenses e
             LEFT JOIN budgets b ON e.budget_id = b.id
             WHERE strftime('%Y-%m', e.date) = ?
+              AND (e.for_whom LIKE ? OR e.paid_by = ?)
             ORDER BY e.date DESC, e.created_at DESC
         ");
-        $stmt->execute([$month]);
+        $stmt->execute([$month, '%' . $userName . '%', $userName]);
         echo json_encode($stmt->fetchAll());
         break;
 
