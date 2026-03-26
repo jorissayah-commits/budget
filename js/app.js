@@ -330,8 +330,18 @@ document.getElementById('expenseForm').addEventListener('submit', async e => {
     const name      = document.getElementById('expenseName').value.trim();
     const amount    = parseFloat(document.getElementById('expenseAmount').value);
     const paid_by   = document.getElementById('expensePaidBy').value;
-    const for_whom  = paid_by; // pour l'instant 1 personne, à affiner si besoin
+    const expType   = document.getElementById('expenseType').value;
     const budget_id = document.getElementById('expenseBudgetId').value;
+
+    let for_whom;
+    if (expType === 'commun') {
+        for_whom = 'Joris,Sabrine';
+    } else {
+        const budget = allBudgets.find(b => String(b.id) === String(budget_id));
+        for_whom = budget
+            ? (budget.type === 'perso_joris' ? 'Joris' : 'Sabrine')
+            : paid_by;
+    }
     const date      = document.getElementById('expenseDate').value;
 
     if (!name || isNaN(amount) || amount <= 0) return;
