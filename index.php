@@ -25,18 +25,11 @@
     </header>
 
     <!-- Cartes stats -->
-    <div class="stats-grid">
+    <div class="stats-grid stats-grid--single">
         <div class="stat-card">
             <span class="stat-label">Dépensé ce mois</span>
             <div class="stat-amount">
                 <span class="stat-value" id="totalSpent">0</span>
-                <span class="stat-currency">€</span>
-            </div>
-        </div>
-        <div class="stat-card">
-            <span class="stat-label">Balance foyer</span>
-            <div class="stat-amount">
-                <span class="stat-value" id="balance">0</span>
                 <span class="stat-currency">€</span>
             </div>
         </div>

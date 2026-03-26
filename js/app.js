@@ -101,7 +101,6 @@ function renderExpenses(expenses) {
 
     const total = expenses.reduce((sum, e) => sum + parseFloat(e.amount), 0);
     document.getElementById('totalSpent').textContent = formatAmount(total);
-    document.getElementById('balance').textContent    = formatAmount(total);
 
     if (expenses.length === 0) {
         container.innerHTML = `
