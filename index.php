@@ -65,7 +65,7 @@
     <div class="modal" id="modal">
         <div class="modal-handle"></div>
         <div class="modal-header">
-            <h2>Nouvelle dépense</h2>
+            <h2 id="modalTitle">Nouvelle dépense</h2>
             <button class="modal-close" id="modalClose" aria-label="Fermer">&times;</button>
         </div>
         <form id="expenseForm" novalidate>
@@ -101,6 +101,9 @@
             </div>
             <button type="submit" class="submit-btn" id="submitBtn">
                 Ajouter
+            </button>
+            <button type="button" class="delete-btn" id="deleteBtn">
+                Supprimer la dépense
             </button>
         </form>
     </div>

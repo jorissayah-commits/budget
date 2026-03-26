@@ -20,6 +20,7 @@ const CATEGORY_ICONS = {
 const now = new Date();
 let currentYear  = now.getFullYear();
 let currentMonth = now.getMonth(); // 0-indexed
+let editingId    = null; // null = création, number = édition
 
 // ─── Helpers ─────────────────────────────────────────────────────
 function getMonthKey() {
@@ -31,7 +32,6 @@ function getMonthTitle() {
 }
 
 function formatDayLabel(dateStr) {
-    // dateStr = "YYYY-MM-DD"
     const [, , dd] = dateStr.split('-');
     const monthIdx = parseInt(dateStr.split('-')[1], 10) - 1;
     const dayNum   = parseInt(dd, 10);
@@ -77,6 +77,17 @@ async function createExpense(data) {
     return json;
 }
 
+async function updateExpense(id, data) {
+    const res = await fetch(`/api/expenses.php?id=${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Erreur serveur');
+    return json;
+}
+
 async function removeExpense(id) {
     const res = await fetch(`/api/expenses.php?id=${encodeURIComponent(id)}`, {
         method: 'DELETE'
@@ -88,7 +99,6 @@ async function removeExpense(id) {
 function renderExpenses(expenses) {
     const container = document.getElementById('expensesContainer');
 
-    // Update totals
     const total = expenses.reduce((sum, e) => sum + parseFloat(e.amount), 0);
     document.getElementById('totalSpent').textContent = formatAmount(total);
     document.getElementById('balance').textContent    = formatAmount(total);
@@ -120,7 +130,13 @@ function renderExpenses(expenses) {
             const icon   = CATEGORY_ICONS[exp.category] || '📦';
             const amount = formatAmount(exp.amount);
             html += `
-            <div class="expense-item" data-id="${exp.id}">
+            <div class="expense-item" data-id="${exp.id}" data-expense='${JSON.stringify({
+                id: exp.id,
+                name: exp.name,
+                amount: exp.amount,
+                category: exp.category,
+                date: exp.date
+            })}'>
                 <div class="expense-icon">${icon}</div>
                 <div class="expense-info">
                     <div class="expense-name">${escapeHtml(exp.name)}</div>
@@ -128,7 +144,7 @@ function renderExpenses(expenses) {
                 </div>
                 <div class="expense-right">
                     <span class="expense-amount">${amount}&nbsp;€</span>
-                    <button class="expense-delete" data-id="${exp.id}" aria-label="Supprimer">×</button>
+                    <span class="expense-chevron">›</span>
                 </div>
             </div>`;
         });
@@ -141,32 +157,10 @@ function renderExpenses(expenses) {
 }
 
 function attachExpenseListeners() {
-    const container = document.getElementById('expensesContainer');
-
-    // Delete buttons
-    container.querySelectorAll('.expense-delete').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            const id = parseInt(btn.dataset.id, 10);
-            if (!confirm('Supprimer cette dépense ?')) return;
-            try {
-                await removeExpense(id);
-                await loadExpenses();
-            } catch {
-                alert('Impossible de supprimer la dépense.');
-            }
-        });
-    });
-
-    // Tap item to reveal delete button (mobile UX)
-    container.querySelectorAll('.expense-item').forEach(item => {
-        item.addEventListener('click', (e) => {
-            if (e.target.classList.contains('expense-delete')) return;
-            // Toggle on this item, hide on others
-            const isOpen = item.classList.contains('show-actions');
-            container.querySelectorAll('.expense-item.show-actions')
-                .forEach(i => i.classList.remove('show-actions'));
-            if (!isOpen) item.classList.add('show-actions');
+    document.querySelectorAll('.expense-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const exp = JSON.parse(item.dataset.expense);
+            openEditModal(exp);
         });
     });
 }
@@ -209,30 +203,61 @@ document.getElementById('nextMonth').addEventListener('click', () => {
 
 // ─── Modal ───────────────────────────────────────────────────────
 const overlay = document.getElementById('modalOverlay');
+const modal   = document.getElementById('modal');
 
-function openModal() {
+function openAddModal() {
+    editingId = null;
+    modal.classList.remove('edit-mode');
+    document.getElementById('modalTitle').textContent = 'Nouvelle dépense';
+    document.getElementById('submitBtn').textContent  = 'Ajouter';
     document.getElementById('expenseDate').value = todayISO();
     overlay.classList.add('active');
-    // Small delay to let animation start before focusing
+    setTimeout(() => document.getElementById('expenseName').focus(), 350);
+}
+
+function openEditModal(exp) {
+    editingId = exp.id;
+    modal.classList.add('edit-mode');
+    document.getElementById('modalTitle').textContent       = 'Modifier la dépense';
+    document.getElementById('submitBtn').textContent        = 'Enregistrer';
+    document.getElementById('expenseName').value            = exp.name;
+    document.getElementById('expenseAmount').value          = exp.amount;
+    document.getElementById('expenseCategory').value        = exp.category;
+    document.getElementById('expenseDate').value            = exp.date;
+    overlay.classList.add('active');
     setTimeout(() => document.getElementById('expenseName').focus(), 350);
 }
 
 function closeModal() {
     overlay.classList.remove('active');
+    modal.classList.remove('edit-mode');
     document.getElementById('expenseForm').reset();
     document.getElementById('submitBtn').disabled = false;
+    editingId = null;
 }
 
-document.getElementById('addBtn').addEventListener('click', openModal);
+document.getElementById('addBtn').addEventListener('click', openAddModal);
 document.getElementById('modalClose').addEventListener('click', closeModal);
 
 overlay.addEventListener('click', (e) => {
     if (e.target === overlay) closeModal();
 });
 
-// Close modal on Escape key
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && overlay.classList.contains('active')) closeModal();
+});
+
+// ─── Delete button (inside edit modal) ───────────────────────────
+document.getElementById('deleteBtn').addEventListener('click', async () => {
+    if (!editingId) return;
+    if (!confirm('Supprimer cette dépense ?')) return;
+    try {
+        await removeExpense(editingId);
+        closeModal();
+        await loadExpenses();
+    } catch {
+        alert('Impossible de supprimer la dépense.');
+    }
 });
 
 // ─── Form submit ─────────────────────────────────────────────────
@@ -244,27 +269,25 @@ document.getElementById('expenseForm').addEventListener('submit', async (e) => {
     const category = document.getElementById('expenseCategory').value;
     const date     = document.getElementById('expenseDate').value;
 
-    if (!name) {
-        document.getElementById('expenseName').focus();
-        return;
-    }
-    if (isNaN(amount) || amount <= 0) {
-        document.getElementById('expenseAmount').focus();
-        return;
-    }
+    if (!name) { document.getElementById('expenseName').focus(); return; }
+    if (isNaN(amount) || amount <= 0) { document.getElementById('expenseAmount').focus(); return; }
 
     const btn = document.getElementById('submitBtn');
     btn.disabled = true;
-    btn.textContent = 'Ajout…';
+    btn.textContent = editingId ? 'Enregistrement…' : 'Ajout…';
 
     try {
-        await createExpense({ name, amount, category, date });
+        if (editingId) {
+            await updateExpense(editingId, { name, amount, category, date });
+        } else {
+            await createExpense({ name, amount, category, date });
+        }
         closeModal();
         await loadExpenses();
     } catch (err) {
         alert('Erreur : ' + err.message);
         btn.disabled = false;
-        btn.textContent = 'Ajouter';
+        btn.textContent = editingId ? 'Enregistrer' : 'Ajouter';
     }
 });
 

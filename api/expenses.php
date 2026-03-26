@@ -59,6 +59,43 @@ switch ($method) {
         echo json_encode($stmt->fetch());
         break;
 
+    case 'PUT':
+        $id = intval($_GET['id'] ?? 0);
+        if ($id <= 0) {
+            http_response_code(400);
+            echo json_encode(['error' => 'ID invalide']);
+            break;
+        }
+        $data = json_decode(file_get_contents('php://input'), true);
+        $name     = trim($data['name'] ?? '');
+        $amount   = floatval($data['amount'] ?? 0);
+        $category = trim($data['category'] ?? 'Perso');
+        $date     = $data['date'] ?? date('Y-m-d');
+
+        if (empty($name)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Le nom est requis']);
+            break;
+        }
+        if ($amount <= 0) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Le montant doit être supérieur à 0']);
+            break;
+        }
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Format de date invalide']);
+            break;
+        }
+
+        $stmt = $pdo->prepare("UPDATE expenses SET name=?, amount=?, category=?, date=? WHERE id=?");
+        $stmt->execute([$name, $amount, $category, $date, $id]);
+
+        $stmt = $pdo->prepare("SELECT * FROM expenses WHERE id = ?");
+        $stmt->execute([$id]);
+        echo json_encode($stmt->fetch());
+        break;
+
     case 'DELETE':
         $id = intval($_GET['id'] ?? 0);
         if ($id <= 0) {
