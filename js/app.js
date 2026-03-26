@@ -152,27 +152,24 @@ function renderBudgetPicker(selectedType, selectedId = null) {
         selectedType === 'commun' ? b.type === 'commun' : b.type.startsWith('perso_')
     );
 
-    if (filtered.length === 0) {
-        picker.innerHTML = `<div class="budget-picker-empty">Aucun budget disponible —<br>créez-en un dans l'onglet Budget</div>`;
-        document.getElementById('expenseBudgetId').value = '';
-        return;
-    }
+    // Option "Sans budget" toujours disponible en premier
+    const noBudgetActive = !selectedId ? 'active' : '';
+    let html = `<button type="button" class="budget-pick-btn ${noBudgetActive}" data-id="">
+        <span class="budget-pick-name">Sans budget</span>
+    </button>`;
 
-    picker.innerHTML = filtered.map(b => {
-        const active = String(b.id) === String(selectedId) ? 'active' : '';
+    html += filtered.map(b => {
+        const active   = String(b.id) === String(selectedId) ? 'active' : '';
         const memberId = getMemberIdFromBudgetType(b.type);
-        const sub = memberId ? getMemberName(memberId) : '';
+        const sub      = memberId ? getMemberName(memberId) : '';
         return `<button type="button" class="budget-pick-btn ${active}" data-id="${b.id}">
             <span class="budget-pick-name">${escapeHtml(b.name)}</span>
             ${sub ? `<span class="budget-pick-sub">${sub}</span>` : ''}
         </button>`;
     }).join('');
 
-    // Auto-select first if none matched
-    if (!selectedId || !filtered.find(b => String(b.id) === String(selectedId))) {
-        const first = picker.querySelector('.budget-pick-btn');
-        if (first) { first.classList.add('active'); document.getElementById('expenseBudgetId').value = first.dataset.id; }
-    }
+    picker.innerHTML = html;
+    document.getElementById('expenseBudgetId').value = selectedId || '';
 
     picker.querySelectorAll('.budget-pick-btn').forEach(btn => {
         btn.addEventListener('click', () => {
