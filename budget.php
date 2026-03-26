@@ -42,9 +42,7 @@
                 <label>Type</label>
                 <div class="toggle-group" id="budgetTypeGroup">
                     <button type="button" class="toggle-btn active" data-value="commun">Commun</button>
-                    <?php foreach (MEMBERS as $m): ?>
-                        <button type="button" class="toggle-btn" data-value="perso_<?= $m['id'] ?>">Perso <?= $m['name'] ?></button>
-                    <?php endforeach; ?>
+                    <button type="button" class="toggle-btn" data-value="perso_<?= $currentUser['id'] ?>">Perso <?= $currentUser['name'] ?></button>
                 </div>
                 <input type="hidden" id="budgetType" value="commun">
             </div>

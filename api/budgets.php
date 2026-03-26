@@ -8,8 +8,8 @@ require_once __DIR__ . '/../includes/auth.php';
 $currentUser = requireAuth(true);
 
 $method = $_SERVER['REQUEST_METHOD'];
-$allowedTypes = getAllowedBudgetTypes();
-$userPersoType = 'perso_' . $currentUser['id'];
+$userPersoType  = 'perso_' . $currentUser['id'];
+$allowedTypes   = ['commun', $userPersoType]; // chaque user ne peut écrire que sur ses propres types
 
 /**
  * Parse et valide les champs d'un budget depuis le body JSON.
