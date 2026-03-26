@@ -16,18 +16,34 @@ try {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             amount REAL NOT NULL,
-            category TEXT DEFAULT 'Perso',
             paid_by TEXT DEFAULT 'Joris',
             for_whom TEXT DEFAULT 'Joris,Sabrine',
+            budget_id INTEGER,
             date DATE NOT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     ");
 
-    // Migration : ajout des colonnes si elles n'existent pas encore
-    foreach (['paid_by TEXT DEFAULT \'Joris\'', 'for_whom TEXT DEFAULT \'Joris,Sabrine\''] as $col) {
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS budgets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            amount REAL NOT NULL,
+            type TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ");
+
+    // Migrations
+    $migrations = [
+        'paid_by TEXT DEFAULT \'Joris\'',
+        'for_whom TEXT DEFAULT \'Joris,Sabrine\'',
+        'budget_id INTEGER',
+    ];
+    foreach ($migrations as $col) {
         try { $pdo->exec("ALTER TABLE expenses ADD COLUMN $col"); } catch (PDOException $e) {}
     }
+
 } catch (PDOException $e) {
     http_response_code(500);
     die(json_encode(['error' => 'Erreur base de données : ' . $e->getMessage()]));

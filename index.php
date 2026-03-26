@@ -59,8 +59,20 @@
     </button>
 </div>
 
-<!-- Modal ajout dépense -->
-<div class="modal-overlay" id="modalOverlay" role="dialog" aria-modal="true" aria-label="Ajouter une dépense">
+<!-- Barre de navigation -->
+<nav class="bottom-nav">
+    <a href="index.php" class="bottom-nav-item active">
+        <span class="bottom-nav-icon">💸</span>
+        <span>Dépenses</span>
+    </a>
+    <a href="budget.php" class="bottom-nav-item">
+        <span class="bottom-nav-icon">📊</span>
+        <span>Budget</span>
+    </a>
+</nav>
+
+<!-- Modal ajout/édition dépense -->
+<div class="modal-overlay" id="modalOverlay" role="dialog" aria-modal="true">
     <div class="modal" id="modal">
         <div class="modal-handle"></div>
         <div class="modal-header">
@@ -88,38 +100,26 @@
                 <input type="hidden" id="expensePaidBy" value="Joris">
             </div>
             <div class="form-group">
-                <label>Pour</label>
-                <div class="toggle-group" id="forWhomGroup">
-                    <button type="button" class="toggle-btn active" data-value="Joris">Joris</button>
-                    <button type="button" class="toggle-btn active" data-value="Sabrine">Sabrine</button>
+                <label>Type</label>
+                <div class="toggle-group" id="expenseTypeGroup">
+                    <button type="button" class="toggle-btn active" data-value="commun">Commun</button>
+                    <button type="button" class="toggle-btn" data-value="personnel">Personnel</button>
                 </div>
-                <input type="hidden" id="expenseForWhom" value="Joris,Sabrine">
+                <input type="hidden" id="expenseType" value="commun">
             </div>
-            <div class="form-group">
-                <label for="expenseCategory">Catégorie</label>
-                <div class="select-wrapper">
-                    <select id="expenseCategory">
-                        <option value="Perso">📋 Perso</option>
-                        <option value="Foyer">🏠 Foyer</option>
-                        <option value="Alimentation">🛒 Alimentation</option>
-                        <option value="Transport">🚗 Transport</option>
-                        <option value="Loisirs">🎉 Loisirs</option>
-                        <option value="Santé">💊 Santé</option>
-                        <option value="Autre">📦 Autre</option>
-                    </select>
-                    <span class="select-arrow">›</span>
+            <div class="form-group" id="budgetPickerGroup">
+                <label>Budget</label>
+                <div class="budget-picker" id="budgetPicker">
+                    <div class="budget-picker-empty">Aucun budget disponible —<br>créez-en un dans l'onglet Budget</div>
                 </div>
+                <input type="hidden" id="expenseBudgetId" value="">
             </div>
             <div class="form-group">
                 <label for="expenseDate">Date</label>
                 <input type="date" id="expenseDate" required>
             </div>
-            <button type="submit" class="submit-btn" id="submitBtn">
-                Ajouter
-            </button>
-            <button type="button" class="delete-btn" id="deleteBtn">
-                Supprimer la dépense
-            </button>
+            <button type="submit" class="submit-btn" id="submitBtn">Ajouter</button>
+            <button type="button" class="delete-btn" id="deleteBtn">Supprimer la dépense</button>
         </form>
     </div>
 </div>

@@ -41,7 +41,7 @@ body {
     max-width: 480px;
     margin: 0 auto;
     padding: 0 16px;
-    padding-bottom: calc(110px + var(--safe-bottom));
+    padding-bottom: calc(160px + var(--safe-bottom));
 }
 
 /* ─── Month Navigation ──────────────────────────────────────────── */
@@ -559,6 +559,124 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     padding: 40px 0;
     color: var(--text-muted);
     font-size: 14px;
+}
+
+/* ─── Bottom nav ─────────────────────────────────────────────────── */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    background: #111318;
+    border-top: 1px solid var(--card-border);
+    z-index: 60;
+    padding-bottom: var(--safe-bottom);
+}
+
+.bottom-nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 10px 0 12px;
+    text-decoration: none;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    transition: color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.bottom-nav-item.active { color: var(--accent); }
+.bottom-nav-icon { font-size: 22px; line-height: 1; }
+
+/* ─── Page header (Budget page) ──────────────────────────────────── */
+.page-header {
+    padding: 28px 4px 20px;
+}
+
+.page-title {
+    font-size: 26px;
+    font-weight: 800;
+}
+
+/* ─── Budget sections ────────────────────────────────────────────── */
+.budget-section {
+    margin-bottom: 24px;
+}
+
+.budget-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    padding: 0 4px;
+}
+
+.budget-section-total {
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.budget-type-badge { font-size: 11px; }
+.budget-type-commun        { background: rgba(124,111,247,0.15); color: #9d98f9; }
+.budget-type-perso_joris   { background: rgba(74,158,255,0.15);  color: #4a9eff; }
+.budget-type-perso_sabrine { background: rgba(255,107,157,0.15); color: #ff6b9d; }
+
+/* ─── Budget picker (in expense form) ───────────────────────────── */
+.budget-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.budget-pick-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    background: var(--bg);
+    border: 1.5px solid var(--card-border);
+    border-radius: 12px;
+    padding: 10px 14px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.budget-pick-btn.active {
+    border-color: var(--accent);
+    background: rgba(124,111,247,0.1);
+}
+
+.budget-pick-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.budget-pick-sub {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+.budget-picker-empty {
+    font-size: 13px;
+    color: var(--text-muted);
+    padding: 12px 4px;
+    line-height: 1.5;
 }
 
 /* ─── Desktop adjustments ────────────────────────────────────────── */

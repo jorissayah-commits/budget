@@ -6,23 +6,12 @@ const MONTHS_FR = [
     'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
 ];
 
-const CATEGORY_ICONS = {
-    'Perso':        '📋',
-    'Foyer':        '🏠',
-    'Alimentation': '🛒',
-    'Transport':    '🚗',
-    'Loisirs':      '🎉',
-    'Santé':        '💊',
-    'Autre':        '📦'
-};
-
 // ─── State ────────────────────────────────────────────────────────
 const now = new Date();
 let currentYear  = now.getFullYear();
-let currentMonth = now.getMonth(); // 0-indexed
-let editingId    = null; // null = création, number = édition
-
-const PEOPLE = ['Joris', 'Sabrine'];
+let currentMonth = now.getMonth();
+let editingId    = null;
+let allBudgets   = [];
 
 // ─── Helpers ─────────────────────────────────────────────────────
 function getMonthKey() {
@@ -34,26 +23,18 @@ function getMonthTitle() {
 }
 
 function formatDayLabel(dateStr) {
-    const [, , dd] = dateStr.split('-');
-    const monthIdx = parseInt(dateStr.split('-')[1], 10) - 1;
-    const dayNum   = parseInt(dd, 10);
-    const monthAbbr = MONTHS_FR[monthIdx].substring(0, 3).toUpperCase();
-    return `${dayNum} ${monthAbbr}`;
+    const parts    = dateStr.split('-');
+    const monthIdx = parseInt(parts[1], 10) - 1;
+    const dayNum   = parseInt(parts[2], 10);
+    return `${dayNum} ${MONTHS_FR[monthIdx].substring(0, 3).toUpperCase()}`;
 }
 
 function formatAmount(val) {
-    return parseFloat(val).toLocaleString('fr-FR', {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 2
-    });
+    return parseFloat(val).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
 function escapeHtml(str) {
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 function todayISO() {
@@ -61,9 +42,15 @@ function todayISO() {
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-// ─── API calls ───────────────────────────────────────────────────
+// ─── API ─────────────────────────────────────────────────────────
 async function fetchExpenses(month) {
     const res = await fetch(`/api/expenses.php?month=${encodeURIComponent(month)}`);
+    if (!res.ok) throw new Error('Erreur réseau');
+    return res.json();
+}
+
+async function fetchBudgets() {
+    const res = await fetch('/api/budgets.php');
     if (!res.ok) throw new Error('Erreur réseau');
     return res.json();
 }
@@ -80,7 +67,7 @@ async function createExpense(data) {
 }
 
 async function updateExpense(id, data) {
-    const res = await fetch(`/api/expenses.php?id=${encodeURIComponent(id)}`, {
+    const res = await fetch(`/api/expenses.php?id=${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -91,27 +78,22 @@ async function updateExpense(id, data) {
 }
 
 async function removeExpense(id) {
-    const res = await fetch(`/api/expenses.php?id=${encodeURIComponent(id)}`, {
-        method: 'DELETE'
-    });
+    const res = await fetch(`/api/expenses.php?id=${id}`, { method: 'DELETE' });
     if (!res.ok) throw new Error('Erreur suppression');
 }
 
-// ─── Balance calculation ─────────────────────────────────────────
+// ─── Balance ──────────────────────────────────────────────────────
 function computeBalance(expenses) {
-    // net > 0 : Sabrine doit à Joris / net < 0 : Joris doit à Sabrine
     let net = 0;
     expenses.forEach(exp => {
-        const amount   = parseFloat(exp.amount);
-        const paidBy   = exp.paid_by   || 'Joris';
-        const forWhom  = (exp.for_whom || 'Joris,Sabrine').split(',').map(s => s.trim());
-        const share    = amount / forWhom.length;
-
+        const amount  = parseFloat(exp.amount);
+        const paidBy  = exp.paid_by  || 'Joris';
+        const forWhom = (exp.for_whom || 'Joris,Sabrine').split(',').map(s => s.trim());
+        const share   = amount / forWhom.length;
         forWhom.forEach(person => {
             if (person !== paidBy) {
-                // "person" doit "share" à "paidBy"
-                if (paidBy === 'Joris')   net += share; // Sabrine doit à Joris
-                if (paidBy === 'Sabrine') net -= share; // Joris doit à Sabrine
+                if (paidBy === 'Joris')   net += share;
+                if (paidBy === 'Sabrine') net -= share;
             }
         });
     });
@@ -119,110 +101,90 @@ function computeBalance(expenses) {
 }
 
 function renderBalance(expenses) {
-    const net  = computeBalance(expenses);
-    const el   = document.getElementById('balanceInfo');
+    const net = computeBalance(expenses);
+    const el  = document.getElementById('balanceInfo');
     if (Math.abs(net) < 0.01) {
         el.innerHTML = `<span class="balance-neutral">Équilibre ✓</span>`;
         return;
     }
-    const debtor  = net > 0 ? 'Sabrine' : 'Joris';
-    const creditor = net > 0 ? 'Joris'  : 'Sabrine';
-    const cssClass = net > 0 ? 'owes'   : 'owed';
+    const debtor   = net > 0 ? 'Sabrine' : 'Joris';
+    const creditor = net > 0 ? 'Joris'   : 'Sabrine';
+    const cls      = net > 0 ? 'owes'    : 'owed';
     el.innerHTML = `
         <div class="balance-name">${debtor} doit à ${creditor}</div>
-        <div class="balance-amount ${cssClass}">${formatAmount(Math.abs(net))} €</div>`;
+        <div class="balance-amount ${cls}">${formatAmount(Math.abs(net))} €</div>`;
 }
 
-// ─── Render ──────────────────────────────────────────────────────
+// ─── Render expenses ─────────────────────────────────────────────
 function renderExpenses(expenses) {
     const container = document.getElementById('expensesContainer');
-
-    const total = expenses.reduce((sum, e) => sum + parseFloat(e.amount), 0);
+    const total = expenses.reduce((s, e) => s + parseFloat(e.amount), 0);
     document.getElementById('totalSpent').textContent = formatAmount(total);
     renderBalance(expenses);
 
     if (expenses.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <div class="empty-icon">💸</div>
-                <p>Aucune dépense ce mois</p>
-            </div>`;
+        container.innerHTML = `<div class="empty-state"><div class="empty-icon">💸</div><p>Aucune dépense ce mois</p></div>`;
         return;
     }
 
-    // Group by date
     const groups = {};
     expenses.forEach(exp => {
         if (!groups[exp.date]) groups[exp.date] = [];
         groups[exp.date].push(exp);
     });
 
-    const sortedDates = Object.keys(groups).sort((a, b) => b.localeCompare(a));
-
     let html = '';
-    sortedDates.forEach(date => {
-        html += `<div class="date-group">`;
-        html += `<div class="date-label">${formatDayLabel(date)}</div>`;
-
+    Object.keys(groups).sort((a,b) => b.localeCompare(a)).forEach(date => {
+        html += `<div class="date-group"><div class="date-label">${formatDayLabel(date)}</div>`;
         groups[date].forEach(exp => {
-            const icon      = CATEGORY_ICONS[exp.category] || '📦';
-            const amount    = formatAmount(exp.amount);
-            const paidBy    = exp.paid_by || 'Joris';
+            const paidBy     = exp.paid_by || 'Joris';
             const payerClass = paidBy.toLowerCase();
-            const expData   = escapeHtml(JSON.stringify({
+            const budgetName = exp.budget_name || '';
+            const budgetType = exp.budget_type || '';
+            const typeLabel  = budgetType === 'commun' ? 'Commun' : 'Personnel';
+            const expData    = escapeHtml(JSON.stringify({
                 id: exp.id, name: exp.name, amount: exp.amount,
-                category: exp.category, paid_by: paidBy,
-                for_whom: exp.for_whom || 'Joris,Sabrine', date: exp.date
+                paid_by: paidBy, for_whom: exp.for_whom || 'Joris,Sabrine',
+                budget_id: exp.budget_id || '', budget_type: budgetType, date: exp.date
             }));
             html += `
-            <div class="expense-item" data-id="${exp.id}" data-expense="${expData}">
-                <div class="expense-icon">${icon}</div>
+            <div class="expense-item" data-expense="${expData}">
+                <div class="expense-icon">${budgetType === 'commun' ? '🏠' : '👤'}</div>
                 <div class="expense-info">
                     <div class="expense-name">${escapeHtml(exp.name)}</div>
-                    <span class="expense-badge">${escapeHtml(exp.category)}</span>
+                    <span class="expense-badge">${budgetName || typeLabel}</span>
                     <span class="expense-payer ${payerClass}">${escapeHtml(paidBy)}</span>
                 </div>
                 <div class="expense-right">
-                    <span class="expense-amount">${amount}&nbsp;€</span>
+                    <span class="expense-amount">${formatAmount(exp.amount)}&nbsp;€</span>
                     <span class="expense-chevron">›</span>
                 </div>
             </div>`;
         });
-
         html += `</div>`;
     });
 
     container.innerHTML = html;
-    attachExpenseListeners();
-}
-
-function attachExpenseListeners() {
-    document.querySelectorAll('.expense-item').forEach(item => {
+    container.querySelectorAll('.expense-item').forEach(item => {
         item.addEventListener('click', () => {
-            const exp = JSON.parse(item.dataset.expense.replace(/&quot;/g, '"').replace(/&amp;/g, '&'));
+            const exp = JSON.parse(item.dataset.expense.replace(/&quot;/g,'"').replace(/&amp;/g,'&'));
             openEditModal(exp);
         });
     });
 }
 
-// ─── Load ────────────────────────────────────────────────────────
 async function loadExpenses() {
     const container = document.getElementById('expensesContainer');
     container.innerHTML = '<div class="loading">Chargement…</div>';
-
     try {
         const expenses = await fetchExpenses(getMonthKey());
         renderExpenses(expenses);
     } catch {
-        container.innerHTML = `
-            <div class="empty-state">
-                <div class="empty-icon">⚠️</div>
-                <p>Impossible de charger les dépenses</p>
-            </div>`;
+        container.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><p>Impossible de charger</p></div>`;
     }
 }
 
-// ─── Month navigation ─────────────────────────────────────────────
+// ─── Month nav ────────────────────────────────────────────────────
 function updateMonthDisplay() {
     document.getElementById('monthTitle').textContent = getMonthTitle();
 }
@@ -230,29 +192,97 @@ function updateMonthDisplay() {
 document.getElementById('prevMonth').addEventListener('click', () => {
     currentMonth--;
     if (currentMonth < 0) { currentMonth = 11; currentYear--; }
-    updateMonthDisplay();
-    loadExpenses();
+    updateMonthDisplay(); loadExpenses();
 });
 
 document.getElementById('nextMonth').addEventListener('click', () => {
     currentMonth++;
     if (currentMonth > 11) { currentMonth = 0; currentYear++; }
-    updateMonthDisplay();
-    loadExpenses();
+    updateMonthDisplay(); loadExpenses();
 });
 
-// ─── Modal ───────────────────────────────────────────────────────
+// ─── Budget picker ────────────────────────────────────────────────
+function renderBudgetPicker(selectedType, selectedId = null) {
+    const picker = document.getElementById('budgetPicker');
+
+    // Filter budgets : commun → type commun, personnel → perso_joris + perso_sabrine
+    const filtered = allBudgets.filter(b =>
+        selectedType === 'commun'
+            ? b.type === 'commun'
+            : b.type === 'perso_joris' || b.type === 'perso_sabrine'
+    );
+
+    if (filtered.length === 0) {
+        picker.innerHTML = `<div class="budget-picker-empty">Aucun budget disponible —<br>créez-en un dans l'onglet Budget</div>`;
+        document.getElementById('expenseBudgetId').value = '';
+        return;
+    }
+
+    picker.innerHTML = filtered.map(b => {
+        const active = String(b.id) === String(selectedId) ? 'active' : '';
+        const sub    = b.type === 'perso_joris' ? 'Joris' : b.type === 'perso_sabrine' ? 'Sabrine' : '';
+        return `<button type="button" class="budget-pick-btn ${active}" data-id="${b.id}">
+            <span class="budget-pick-name">${escapeHtml(b.name)}</span>
+            ${sub ? `<span class="budget-pick-sub">${sub}</span>` : ''}
+        </button>`;
+    }).join('');
+
+    // Auto-select first if none selected
+    if (!selectedId || !filtered.find(b => String(b.id) === String(selectedId))) {
+        const first = picker.querySelector('.budget-pick-btn');
+        if (first) { first.classList.add('active'); document.getElementById('expenseBudgetId').value = first.dataset.id; }
+    }
+
+    picker.querySelectorAll('.budget-pick-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            picker.querySelectorAll('.budget-pick-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('expenseBudgetId').value = btn.dataset.id;
+        });
+    });
+}
+
+// ─── Modal ────────────────────────────────────────────────────────
 const overlay = document.getElementById('modalOverlay');
 const modal   = document.getElementById('modal');
+
+function setToggle(groupId, values, hiddenId) {
+    const vals = Array.isArray(values) ? values : [values];
+    document.querySelectorAll(`#${groupId} .toggle-btn`).forEach(btn => {
+        btn.classList.toggle('active', vals.includes(btn.dataset.value));
+    });
+    if (hiddenId) document.getElementById(hiddenId).value = vals[0];
+}
+
+function initToggleGroups() {
+    // Payé par — single
+    document.querySelectorAll('#paidByGroup .toggle-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            setToggle('paidByGroup', [btn.dataset.value], 'expensePaidBy');
+        });
+    });
+
+    // Type (commun/personnel) — single, met à jour le picker
+    document.querySelectorAll('#expenseTypeGroup .toggle-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            setToggle('expenseTypeGroup', [btn.dataset.value], 'expenseType');
+            renderBudgetPicker(btn.dataset.value);
+        });
+    });
+}
+
+initToggleGroups();
 
 function openAddModal() {
     editingId = null;
     modal.classList.remove('edit-mode');
     document.getElementById('modalTitle').textContent = 'Nouvelle dépense';
     document.getElementById('submitBtn').textContent  = 'Ajouter';
+    document.getElementById('expenseForm').reset();
     document.getElementById('expenseDate').value = todayISO();
-    setToggle('paidByGroup',  ['Joris'],            false);
-    setToggle('forWhomGroup', ['Joris', 'Sabrine'], true);
+    setToggle('paidByGroup',    ['Joris'],   'expensePaidBy');
+    setToggle('expenseTypeGroup',['commun'], 'expenseType');
+    renderBudgetPicker('commun');
     overlay.classList.add('active');
     setTimeout(() => document.getElementById('expenseName').focus(), 350);
 }
@@ -264,10 +294,12 @@ function openEditModal(exp) {
     document.getElementById('submitBtn').textContent  = 'Enregistrer';
     document.getElementById('expenseName').value      = exp.name;
     document.getElementById('expenseAmount').value    = exp.amount;
-    document.getElementById('expenseCategory').value  = exp.category;
     document.getElementById('expenseDate').value      = exp.date;
-    setToggle('paidByGroup',  [exp.paid_by || 'Joris'], false);
-    setToggle('forWhomGroup', (exp.for_whom || 'Joris,Sabrine').split(',').map(s => s.trim()), true);
+
+    const type = exp.budget_type === 'commun' ? 'commun' : (exp.budget_id ? 'personnel' : 'commun');
+    setToggle('paidByGroup',     [exp.paid_by || 'Joris'], 'expensePaidBy');
+    setToggle('expenseTypeGroup',[type],                   'expenseType');
+    renderBudgetPicker(type, exp.budget_id);
     overlay.classList.add('active');
     setTimeout(() => document.getElementById('expenseName').focus(), 350);
 }
@@ -280,96 +312,39 @@ function closeModal() {
     editingId = null;
 }
 
-// ─── Toggle buttons ───────────────────────────────────────────────
-function initToggleGroups() {
-    // Payé par — single select
-    document.querySelectorAll('#paidByGroup .toggle-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('#paidByGroup .toggle-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            document.getElementById('expensePaidBy').value = btn.dataset.value;
-        });
-    });
-
-    // Pour — multi select (au moins 1 requis)
-    document.querySelectorAll('#forWhomGroup .toggle-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const active = document.querySelectorAll('#forWhomGroup .toggle-btn.active');
-            // Empêche de tout décocher
-            if (btn.classList.contains('active') && active.length === 1) return;
-            btn.classList.toggle('active');
-            const selected = [...document.querySelectorAll('#forWhomGroup .toggle-btn.active')]
-                .map(b => b.dataset.value).join(',');
-            document.getElementById('expenseForWhom').value = selected;
-        });
-    });
-}
-
-function setToggle(groupId, values, multi = false) {
-    const vals = Array.isArray(values) ? values : [values];
-    document.querySelectorAll(`#${groupId} .toggle-btn`).forEach(btn => {
-        btn.classList.toggle('active', vals.includes(btn.dataset.value));
-    });
-    if (multi) {
-        document.getElementById('expenseForWhom').value = vals.join(',');
-    } else {
-        document.getElementById('expensePaidBy').value = vals[0];
-    }
-}
-
-initToggleGroups();
-
 document.getElementById('addBtn').addEventListener('click', openAddModal);
 document.getElementById('modalClose').addEventListener('click', closeModal);
+overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
-overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) closeModal();
-});
-
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && overlay.classList.contains('active')) closeModal();
-});
-
-// ─── Delete button (inside edit modal) ───────────────────────────
 document.getElementById('deleteBtn').addEventListener('click', async () => {
-    if (!editingId) return;
-    if (!confirm('Supprimer cette dépense ?')) return;
+    if (!editingId || !confirm('Supprimer cette dépense ?')) return;
     try {
         await removeExpense(editingId);
-        closeModal();
-        await loadExpenses();
-    } catch {
-        alert('Impossible de supprimer la dépense.');
-    }
+        closeModal(); loadExpenses();
+    } catch { alert('Impossible de supprimer.'); }
 });
 
-// ─── Form submit ─────────────────────────────────────────────────
-document.getElementById('expenseForm').addEventListener('submit', async (e) => {
+document.getElementById('expenseForm').addEventListener('submit', async e => {
     e.preventDefault();
+    const name      = document.getElementById('expenseName').value.trim();
+    const amount    = parseFloat(document.getElementById('expenseAmount').value);
+    const paid_by   = document.getElementById('expensePaidBy').value;
+    const for_whom  = paid_by; // pour l'instant 1 personne, à affiner si besoin
+    const budget_id = document.getElementById('expenseBudgetId').value;
+    const date      = document.getElementById('expenseDate').value;
 
-    const name     = document.getElementById('expenseName').value.trim();
-    const amount   = parseFloat(document.getElementById('expenseAmount').value);
-    const category = document.getElementById('expenseCategory').value;
-    const date     = document.getElementById('expenseDate').value;
-
-    if (!name) { document.getElementById('expenseName').focus(); return; }
-    if (isNaN(amount) || amount <= 0) { document.getElementById('expenseAmount').focus(); return; }
+    if (!name || isNaN(amount) || amount <= 0) return;
 
     const btn = document.getElementById('submitBtn');
     btn.disabled = true;
     btn.textContent = editingId ? 'Enregistrement…' : 'Ajout…';
 
-    const paid_by  = document.getElementById('expensePaidBy').value;
-    const for_whom = document.getElementById('expenseForWhom').value;
-
     try {
-        if (editingId) {
-            await updateExpense(editingId, { name, amount, category, paid_by, for_whom, date });
-        } else {
-            await createExpense({ name, amount, category, paid_by, for_whom, date });
-        }
-        closeModal();
-        await loadExpenses();
+        const data = { name, amount, paid_by, for_whom, budget_id, date };
+        if (editingId) await updateExpense(editingId, data);
+        else           await createExpense(data);
+        closeModal(); loadExpenses();
     } catch (err) {
         alert('Erreur : ' + err.message);
         btn.disabled = false;
@@ -377,6 +352,7 @@ document.getElementById('expenseForm').addEventListener('submit', async (e) => {
     }
 });
 
-// ─── Init ────────────────────────────────────────────────────────
+// ─── Init ─────────────────────────────────────────────────────────
 updateMonthDisplay();
+fetchBudgets().then(b => { allBudgets = b; }).catch(() => {});
 loadExpenses();
