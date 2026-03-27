@@ -45,7 +45,7 @@ function renderExpenses(expenses) {
 
             let metaHtml = '';
             if (IS_COUPLE_MODE) {
-                metaHtml = `<div class="expense-meta">Payé par ${escapeHtml(paidBy)} · Pour ${escapeHtml(pourLabel)}</div>`;
+                metaHtml = `<div class="expense-meta">Payé par ${escapeHtml(paidBy)}, pour ${escapeHtml(pourLabel)}</div>`;
             }
 
             html += `
