@@ -6,10 +6,9 @@
  * Pour ajouter un onglet : ajouter une entrée dans $navItems.
  */
 $navItems = [
-    ['id' => 'depenses',    'href' => 'index.php',      'icon' => '💸', 'label' => 'Dépenses'],
-    ['id' => 'budget',      'href' => 'budget.php',     'icon' => '📊', 'label' => 'Budget'],
-    ['id' => 'foyer',       'href' => 'foyer.php',      'icon' => '🏠', 'label' => 'Foyer'],
-    ['id' => 'deconnexion', 'href' => 'api/logout.php', 'icon' => '🚪', 'label' => 'Quitter'],
+    ['id' => 'depenses', 'href' => 'index.php',  'icon' => '💸', 'label' => 'Dépenses'],
+    ['id' => 'budget',   'href' => 'budget.php', 'icon' => '📊', 'label' => 'Budget'],
+    ['id' => 'profil',   'href' => 'profil.php', 'icon' => '👤', 'label' => 'Profil'],
 ];
 ?>
 <nav class="bottom-nav">
