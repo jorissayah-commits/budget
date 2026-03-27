@@ -19,85 +19,111 @@ function getMonthTitle() {
     return `${MONTHS_FR[currentMonth]} ${currentYear}`;
 }
 
-// ─── Render incomes ──────────────────────────────────────────────
-function renderIncomes() {
-    const container = document.getElementById('incomesContainer');
-    if (allIncomes.length === 0) { container.innerHTML = ''; return; }
+// ─── Render unified suivi ─────────────────────────────────────────
+function renderSuivi(expenses, transfers) {
+    expensesCache = expenses;
+    transfersCache = transfers;
 
-    const today = new Date();
-    const viewingCurrentMonth = (currentYear === today.getFullYear() && currentMonth === today.getMonth());
-    const viewingPast = (currentYear < today.getFullYear()) || (currentYear === today.getFullYear() && currentMonth < today.getMonth());
-    const currentDay = today.getDate();
+    const container = document.getElementById('suiviContainer');
 
-    // Compute days in the viewed month
-    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const today    = new Date();
+    const isCurrentMonth = (currentYear === today.getFullYear() && currentMonth === today.getMonth());
+    const isPastMonth    = (currentYear < today.getFullYear()) || (currentYear === today.getFullYear() && currentMonth < today.getMonth());
+    const daysInMonth    = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const monthStr       = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
 
-    let html = '<div class="suivi-section"><div class="suivi-section-title">💰 Revenus</div>';
+    // Build unified items array
+    const items = [];
 
-    allIncomes.forEach(inc => {
-        const day = Math.min(inc.day_of_month, daysInMonth);
-        const isPast = viewingPast || (viewingCurrentMonth && currentDay >= day);
-        const isFuture = !isPast;
-        const dateStr = `${day} ${MONTHS_FR[currentMonth].substring(0, 3).toUpperCase()}`;
-
-        html += `
-        <div class="expense-item ${isFuture ? 'income-preview' : ''}">
-            <div class="expense-icon">💰</div>
-            <div class="expense-info">
-                <div class="expense-name">${escapeHtml(inc.name)}</div>
-                <div class="expense-meta">${escapeHtml(inc.user_name)} · ${dateStr}${isFuture ? ' · prévu' : ''}</div>
-            </div>
-            <div class="expense-right">
-                <span class="expense-amount income-amount">+${formatAmount(inc.amount)}&nbsp;€</span>
-            </div>
-        </div>`;
+    expenses.forEach(exp => {
+        const paidBy    = exp.paid_by || MEMBERS[0].name;
+        const forWhom   = exp.for_whom || '';
+        const pourLabel = getPourLabel(forWhom);
+        items.push({
+            kind:    'expense',
+            date:    exp.date,
+            icon:    pourLabel === 'Foyer' ? '🏠' : '👤',
+            name:    exp.name,
+            meta:    IS_COUPLE_MODE ? `Payé par ${paidBy}, pour ${pourLabel}` : null,
+            amount:  exp.amount,
+            amountClass: '',
+            preview: false,
+            id:      exp.id,
+        });
     });
 
-    html += '</div>';
-    container.innerHTML = html;
-}
+    allIncomes.forEach(inc => {
+        const day  = Math.min(inc.day_of_month, daysInMonth);
+        const received = isPastMonth || (isCurrentMonth && today.getDate() >= day);
+        const dateStr  = `${monthStr}-${String(day).padStart(2, '0')}`;
+        items.push({
+            kind:    'income',
+            date:    dateStr,
+            icon:    '💰',
+            name:    inc.name,
+            meta:    IS_COUPLE_MODE ? inc.user_name : null,
+            amount:  inc.amount,
+            amountClass: 'income-amount',
+            amountPrefix: '+',
+            preview: !received,
+            id:      null,
+        });
+    });
 
-// ─── Render expenses ──────────────────────────────────────────────
-function renderExpenses(expenses) {
-    expensesCache = expenses;
-    const container = document.getElementById('expensesContainer');
+    transfers.forEach(t => {
+        items.push({
+            kind:    'transfer',
+            date:    t.date,
+            icon:    '↗',
+            name:    `Virement à ${t.to_user}`,
+            meta:    IS_COUPLE_MODE ? `${t.from_user} → ${t.to_user}` : null,
+            amount:  t.amount,
+            amountClass: 'transfer-amount',
+            preview: false,
+            id:      t.id,
+        });
+    });
 
-    if (expenses.length === 0) {
-        container.innerHTML = `<div class="empty-state"><div class="empty-icon">💸</div><p>Aucune dépense ce mois</p></div>`;
+    if (items.length === 0) {
+        container.innerHTML = `<div class="empty-state"><div class="empty-icon">💸</div><p>Aucune opération ce mois</p></div>`;
         return;
     }
 
-    // Grouper par date
+    // Sort by date desc, previewed incomes last within same day
+    items.sort((a, b) => {
+        if (b.date !== a.date) return b.date.localeCompare(a.date);
+        if (a.preview !== b.preview) return a.preview ? 1 : -1;
+        return 0;
+    });
+
+    // Group by date
     const groups = {};
-    expenses.forEach(exp => {
-        if (!groups[exp.date]) groups[exp.date] = [];
-        groups[exp.date].push(exp);
+    items.forEach(item => {
+        if (!groups[item.date]) groups[item.date] = [];
+        groups[item.date].push(item);
     });
 
     let html = '';
     Object.keys(groups).sort((a, b) => b.localeCompare(a)).forEach(date => {
-        html += `<div class="date-group"><div class="date-label">${formatDayLabel(date)}</div>`;
-        groups[date].forEach(exp => {
-            const paidBy    = exp.paid_by || MEMBERS[0].name;
-            const forWhom   = exp.for_whom || '';
-            const pourLabel = getPourLabel(forWhom);
-            const icon      = pourLabel === 'Foyer' ? '🏠' : '👤';
+        html += `<div class="date-group"><div class="date-label">${formatDayLabel(date)}${groups[date].some(i => i.preview) && !groups[date].some(i => !i.preview) ? ' · <span class="preview-label">prévu</span>' : ''}</div>`;
 
-            let metaHtml = '';
-            if (IS_COUPLE_MODE) {
-                metaHtml = `<div class="expense-meta">Payé par ${escapeHtml(paidBy)}, pour ${escapeHtml(pourLabel)}</div>`;
-            }
+        groups[date].forEach(item => {
+            const clickable  = item.kind === 'expense' || item.kind === 'transfer';
+            const chevron    = item.kind === 'expense' ? '<span class="expense-chevron">›</span>' : '';
+            const metaHtml   = item.meta ? `<div class="expense-meta">${escapeHtml(item.meta)}</div>` : '';
+            const prefix     = item.amountPrefix || '';
+            const previewCls = item.preview ? ' item-preview' : '';
 
             html += `
-            <div class="expense-item" data-id="${exp.id}">
-                <div class="expense-icon">${icon}</div>
+            <div class="expense-item${previewCls}${clickable ? ' suivi-clickable' : ''}" data-kind="${item.kind}" data-id="${item.id ?? ''}">
+                <div class="expense-icon">${item.icon}</div>
                 <div class="expense-info">
-                    <div class="expense-name">${escapeHtml(exp.name)}</div>
+                    <div class="expense-name">${escapeHtml(item.name)}</div>
                     ${metaHtml}
                 </div>
                 <div class="expense-right">
-                    <span class="expense-amount">${formatAmount(exp.amount)}&nbsp;€</span>
-                    <span class="expense-chevron">›</span>
+                    <span class="expense-amount ${item.amountClass}">${prefix}${formatAmount(item.amount)}&nbsp;€</span>
+                    ${chevron}
                 </div>
             </div>`;
         });
@@ -106,74 +132,34 @@ function renderExpenses(expenses) {
 
     container.innerHTML = html;
 
-    container.querySelectorAll('.expense-item').forEach(item => {
+    container.querySelectorAll('.suivi-clickable').forEach(item => {
         item.addEventListener('click', () => {
-            const id  = parseInt(item.dataset.id, 10);
-            const exp = expensesCache.find(e => e.id === id);
-            if (exp) openEditModal(exp);
-        });
-    });
-}
-
-// ─── Render transfers ────────────────────────────────────────────
-function renderTransfers() {
-    const container = document.getElementById('transfersContainer');
-    if (!IS_COUPLE_MODE || transfersCache.length === 0) { container.innerHTML = ''; return; }
-
-    let html = '<div class="suivi-section"><div class="suivi-section-title">↗ Virements</div>';
-
-    transfersCache.forEach(t => {
-        const dateStr = formatDayLabel(t.date);
-        html += `
-        <div class="expense-item transfer-item" data-transfer-id="${t.id}">
-            <div class="expense-icon">↗</div>
-            <div class="expense-info">
-                <div class="expense-name">Virement à ${escapeHtml(t.to_user)}</div>
-                <div class="expense-meta">${escapeHtml(t.from_user)} → ${escapeHtml(t.to_user)} · ${dateStr}</div>
-            </div>
-            <div class="expense-right">
-                <span class="expense-amount transfer-amount">${formatAmount(t.amount)}&nbsp;€</span>
-            </div>
-        </div>`;
-    });
-
-    html += '</div>';
-    container.innerHTML = html;
-
-    container.querySelectorAll('.transfer-item').forEach(item => {
-        item.addEventListener('click', () => {
-            const id = parseInt(item.dataset.transferId, 10);
-            if (confirm('Supprimer ce virement ?')) {
-                apiDelete(`/api/transfers.php?id=${id}`).then(() => loadAll()).catch(() => alert('Erreur'));
+            const kind = item.dataset.kind;
+            const id   = parseInt(item.dataset.id, 10);
+            if (kind === 'expense') {
+                const exp = expensesCache.find(e => e.id === id);
+                if (exp) openEditModal(exp);
+            } else if (kind === 'transfer') {
+                if (confirm('Supprimer ce virement ?')) {
+                    apiDelete(`/api/transfers.php?id=${id}`).then(() => loadAll()).catch(() => alert('Erreur'));
+                }
             }
         });
     });
 }
 
-async function loadExpenses() {
-    const container = document.getElementById('expensesContainer');
+async function loadAll() {
+    const container = document.getElementById('suiviContainer');
     container.innerHTML = '<div class="loading">Chargement…</div>';
     try {
-        const expenses = await apiFetch(`/api/expenses.php?month=${encodeURIComponent(getMonthKey())}`);
-        renderExpenses(expenses);
+        const [expenses, transfers] = await Promise.all([
+            apiFetch(`/api/expenses.php?month=${encodeURIComponent(getMonthKey())}`),
+            IS_COUPLE_MODE ? apiFetch(`/api/transfers.php?month=${encodeURIComponent(getMonthKey())}`) : Promise.resolve([]),
+        ]);
+        renderSuivi(expenses, transfers);
     } catch {
         container.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><p>Impossible de charger</p></div>`;
     }
-}
-
-async function loadTransfers() {
-    if (!IS_COUPLE_MODE) return;
-    try {
-        transfersCache = await apiFetch(`/api/transfers.php?month=${encodeURIComponent(getMonthKey())}`);
-        renderTransfers();
-    } catch {
-        transfersCache = [];
-    }
-}
-
-async function loadAll() {
-    renderIncomes();
-    await Promise.all([loadExpenses(), loadTransfers()]);
 }
 
 // ─── Month nav ────────────────────────────────────────────────────

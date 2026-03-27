@@ -9,19 +9,13 @@
         <button class="nav-btn" id="nextMonth" aria-label="Mois suivant">&#8250;</button>
     </header>
 
-    <!-- Revenus du mois -->
-    <div id="incomesContainer"></div>
-
-    <!-- Liste des dépenses -->
-    <div class="expenses-container" id="expensesContainer">
+    <!-- Liste unifiée -->
+    <div class="expenses-container" id="suiviContainer">
         <div class="empty-state">
             <div class="empty-icon">💸</div>
-            <p>Aucune dépense ce mois</p>
+            <p>Aucune opération ce mois</p>
         </div>
     </div>
-
-    <!-- Virements -->
-    <div id="transfersContainer"></div>
 
 </div>
 

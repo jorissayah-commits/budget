@@ -1042,32 +1042,27 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 /* ─── Suivi mensuel: revenus & virements ─────────────────────────── */
-.suivi-section {
-    margin-bottom: 16px;
-}
-
-.suivi-section-title {
-    font-size: 13px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    color: var(--text-secondary);
-    margin: 0 0 8px 4px;
-}
-
 .income-amount {
     color: #34c759 !important;
-}
-
-.income-preview {
-    opacity: 0.45;
 }
 
 .transfer-amount {
     color: var(--accent-hover) !important;
 }
 
-.transfer-item {
+.item-preview {
+    opacity: 0.45;
+}
+
+.preview-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.suivi-clickable {
     cursor: pointer;
 }
 
