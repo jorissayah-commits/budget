@@ -39,48 +39,52 @@ function renderSuivi(expenses, transfers) {
         const paidBy    = exp.paid_by || MEMBERS[0].name;
         const forWhom   = exp.for_whom || '';
         const pourLabel = getPourLabel(forWhom);
+        const isForFoyer = pourLabel === 'Foyer';
         items.push({
-            kind:    'expense',
-            date:    exp.date,
-            icon:    pourLabel === 'Foyer' ? '🏠' : '👤',
-            name:    exp.name,
-            meta:    IS_COUPLE_MODE ? `Payé par ${paidBy}, pour ${pourLabel}` : null,
-            amount:  exp.amount,
+            kind:      'expense',
+            date:      exp.date,
+            icon:      isForFoyer ? '🏠' : '👤',
+            iconClass: isForFoyer ? 'expense-icon--foyer' : 'expense-icon--personal',
+            name:      exp.name,
+            meta:      IS_COUPLE_MODE ? `Payé par ${paidBy}, pour ${pourLabel}` : null,
+            amount:    exp.amount,
             amountClass: '',
-            preview: false,
-            id:      exp.id,
+            preview:   false,
+            id:        exp.id,
         });
     });
 
     allIncomes.forEach(inc => {
-        const day  = Math.min(inc.day_of_month, daysInMonth);
+        const day      = Math.min(inc.day_of_month, daysInMonth);
         const received = isPastMonth || (isCurrentMonth && today.getDate() >= day);
         const dateStr  = `${monthStr}-${String(day).padStart(2, '0')}`;
         items.push({
-            kind:    'income',
-            date:    dateStr,
-            icon:    '💰',
-            name:    inc.name,
-            meta:    IS_COUPLE_MODE ? inc.user_name : null,
-            amount:  inc.amount,
+            kind:      'income',
+            date:      dateStr,
+            icon:      '💰',
+            iconClass: 'expense-icon--income',
+            name:      inc.name,
+            meta:      IS_COUPLE_MODE ? inc.user_name : null,
+            amount:    inc.amount,
             amountClass: 'income-amount',
             amountPrefix: '+',
-            preview: !received,
-            id:      null,
+            preview:   !received,
+            id:        null,
         });
     });
 
     transfers.forEach(t => {
         items.push({
-            kind:    'transfer',
-            date:    t.date,
-            icon:    '↗',
-            name:    `Virement à ${t.to_user}`,
-            meta:    IS_COUPLE_MODE ? `${t.from_user} → ${t.to_user}` : null,
-            amount:  t.amount,
+            kind:      'transfer',
+            date:      t.date,
+            icon:      '↗',
+            iconClass: 'expense-icon--transfer',
+            name:      `Virement à ${t.to_user}`,
+            meta:      IS_COUPLE_MODE ? `${t.from_user} → ${t.to_user}` : null,
+            amount:    t.amount,
             amountClass: 'transfer-amount',
-            preview: false,
-            id:      t.id,
+            preview:   false,
+            id:        t.id,
         });
     });
 
@@ -116,7 +120,7 @@ function renderSuivi(expenses, transfers) {
 
             html += `
             <div class="expense-item${previewCls}${clickable ? ' suivi-clickable' : ''}" data-kind="${item.kind}" data-id="${item.id ?? ''}">
-                <div class="expense-icon">${item.icon}</div>
+                <div class="expense-icon ${item.iconClass || ''}">${item.icon}</div>
                 <div class="expense-info">
                     <div class="expense-name">${escapeHtml(item.name)}</div>
                     ${metaHtml}

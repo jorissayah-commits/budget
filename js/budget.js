@@ -68,7 +68,7 @@ async function loadBudgets() {
         items.forEach(b => {
             html += `
             <div class="expense-item" data-id="${b.id}">
-                <div class="expense-icon">${icon}</div>
+                <div class="expense-icon expense-icon--budget">${icon}</div>
                 <div class="expense-info">
                     <div class="expense-name">${escapeHtml(b.name)}</div>
                     <span class="expense-badge budget-type-badge ${badgeClass}">${escapeHtml(label)}</span>
@@ -213,7 +213,7 @@ async function loadIncomes() {
             const isOwn = inc.user_id === CURRENT_USER.id;
             html += `
             <div class="expense-item ${isOwn ? 'income-editable' : ''}" data-income-id="${inc.id}">
-                <div class="expense-icon">💰</div>
+                <div class="expense-icon expense-icon--income">💰</div>
                 <div class="expense-info">
                     <div class="expense-name">${escapeHtml(inc.name)}</div>
                     <div class="expense-meta">Le ${inc.day_of_month} de chaque mois</div>
