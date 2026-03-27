@@ -889,6 +889,19 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 /* ─── Analyse page ───────────────────────────────────────────────── */
+.analyse-bloc {
+    margin-bottom: 28px;
+}
+
+.analyse-bloc-title {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary);
+    margin: 0 0 10px 4px;
+}
+
 .analyse-row {
     display: grid;
     grid-template-columns: 1fr 1fr;

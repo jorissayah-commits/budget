@@ -52,19 +52,28 @@ foreach ($members as $m) {
     $share[$m['name']] = 0.0;
 }
 
-$foyerTotal = 0.0;
+$foyerTotal  = 0.0;
+$communTotal = 0.0; // dépenses dont for_whom = tous les membres
+$memberNames = array_column($members, 'name');
 
 foreach ($expenses as $exp) {
-    $amount      = (float)$exp['amount'];
-    $paidBy      = trim($exp['paid_by']);
-    $beneficiaries = array_filter(
+    $amount        = (float)$exp['amount'];
+    $paidBy        = trim($exp['paid_by']);
+    $beneficiaries = array_values(array_filter(
         array_map('trim', explode(',', $exp['for_whom'])),
         fn($s) => $s !== ''
-    );
+    ));
     $n = count($beneficiaries);
     if ($n === 0) continue;
 
     $foyerTotal += $amount;
+
+    // Dépense commune = tous les membres du foyer en bénéficiaires
+    $isCommun = (count(array_diff($memberNames, $beneficiaries)) === 0
+              && count(array_diff($beneficiaries, $memberNames)) === 0);
+    if ($isCommun) {
+        $communTotal += $amount;
+    }
 
     // Qui a payé
     if (array_key_exists($paidBy, $paid)) {
@@ -95,7 +104,8 @@ foreach ($members as $m) {
 }
 
 echo json_encode([
-    'month'       => $month,
-    'foyer_total' => round($foyerTotal, 2),
-    'members'     => $membersResult,
+    'month'        => $month,
+    'foyer_total'  => round($foyerTotal, 2),
+    'commun_total' => round($communTotal, 2),
+    'members'      => $membersResult,
 ]);
