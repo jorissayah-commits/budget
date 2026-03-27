@@ -38,20 +38,22 @@ function renderExpenses(expenses) {
     Object.keys(groups).sort((a, b) => b.localeCompare(a)).forEach(date => {
         html += `<div class="date-group"><div class="date-label">${formatDayLabel(date)}</div>`;
         groups[date].forEach(exp => {
-            const paidBy     = exp.paid_by || MEMBERS[0].name;
-            const memberIdx  = getMemberIndex(paidBy);
-            const payerClass = memberIdx >= 0 ? `member-${memberIdx}` : 'member-0';
-            const budgetName = exp.budget_name || '';
-            const budgetType = exp.budget_type || '';
-            const typeLabel  = budgetType === 'commun' ? 'Commun' : 'Personnel';
+            const paidBy    = exp.paid_by || MEMBERS[0].name;
+            const forWhom   = exp.for_whom || '';
+            const pourLabel = getPourLabel(forWhom);
+            const icon      = pourLabel === 'Foyer' ? '🏠' : '👤';
+
+            let metaHtml = '';
+            if (IS_COUPLE_MODE) {
+                metaHtml = `<div class="expense-meta">Payé par ${escapeHtml(paidBy)} · Pour ${escapeHtml(pourLabel)}</div>`;
+            }
 
             html += `
             <div class="expense-item" data-id="${exp.id}">
-                <div class="expense-icon">${budgetType === 'commun' ? '🏠' : '👤'}</div>
+                <div class="expense-icon">${icon}</div>
                 <div class="expense-info">
                     <div class="expense-name">${escapeHtml(exp.name)}</div>
-                    <span class="expense-badge">${escapeHtml(budgetName || typeLabel)}</span>
-                    ${IS_COUPLE_MODE ? `<span class="expense-payer ${payerClass}">${escapeHtml(paidBy)}</span>` : ''}
+                    ${metaHtml}
                 </div>
                 <div class="expense-right">
                     <span class="expense-amount">${formatAmount(exp.amount)}&nbsp;€</span>
@@ -139,13 +141,22 @@ function renderBudgetPicker(pourValue, selectedId = null) {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────
-// Reconstruit la valeur "pour" depuis les données d'une dépense existante
+// Reconstruit la valeur "pour" (toggle) depuis les données d'une dépense existante
 function getPourValue(exp) {
     if (!exp.for_whom) return 'foyer';
     const names = exp.for_whom.split(',').map(s => s.trim()).filter(Boolean);
     if (names.length >= MEMBERS.length) return 'foyer';
     if (names.length === 1 && MEMBERS.find(m => m.name === names[0])) return names[0];
     return 'foyer';
+}
+
+// Libellé d'affichage dans la liste des dépenses
+function getPourLabel(forWhom) {
+    if (!forWhom) return 'Foyer';
+    const names = forWhom.split(',').map(s => s.trim()).filter(Boolean);
+    if (names.length >= MEMBERS.length) return 'Foyer';
+    if (names.length === 1) return names[0];
+    return 'Foyer';
 }
 
 // ─── Modal ────────────────────────────────────────────────────────
