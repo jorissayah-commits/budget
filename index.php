@@ -9,25 +9,6 @@
         <button class="nav-btn" id="nextMonth" aria-label="Mois suivant">&#8250;</button>
     </header>
 
-    <!-- Cartes stats -->
-    <div class="stats-grid">
-        <div class="stat-card">
-            <span class="stat-label">Dépensé ce mois</span>
-            <div class="stat-amount">
-                <span class="stat-value" id="totalSpent">0</span>
-                <span class="stat-currency">€</span>
-            </div>
-        </div>
-        <?php if (count($foyerMembers) >= 2): ?>
-        <div class="stat-card">
-            <span class="stat-label">Solde</span>
-            <div class="balance-info" id="balanceInfo">
-                <span class="balance-neutral">—</span>
-            </div>
-        </div>
-        <?php endif; ?>
-    </div>
-
     <!-- Liste des dépenses -->
     <div class="expenses-container" id="expensesContainer">
         <div class="empty-state">

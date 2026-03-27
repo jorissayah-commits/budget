@@ -17,57 +17,10 @@ function getMonthTitle() {
     return `${MONTHS_FR[currentMonth]} ${currentYear}`;
 }
 
-// ─── Balance (mode couple uniquement) ────────────────────────────
-function computeBalance(expenses) {
-    // net > 0 : member[1] doit à member[0]  /  net < 0 : member[0] doit à member[1]
-    const m0  = MEMBERS[0].name;
-    const m1  = MEMBERS[1].name;
-    let net = 0;
-
-    expenses.forEach(exp => {
-        const amount  = parseFloat(exp.amount);
-        const paidBy  = exp.paid_by || m0;
-        const forWhom = (exp.for_whom || `${m0},${m1}`).split(',').map(s => s.trim());
-        const share   = amount / forWhom.length;
-
-        forWhom.forEach(person => {
-            if (person !== paidBy) {
-                if (paidBy === m0) net += share;
-                if (paidBy === m1) net -= share;
-            }
-        });
-    });
-    return net;
-}
-
-function renderBalance(expenses) {
-    const el = document.getElementById('balanceInfo');
-    if (!el) return; // pas affiché en mode solo
-
-    const m0  = MEMBERS[0].name;
-    const m1  = MEMBERS[1].name;
-    const net = computeBalance(expenses);
-
-    if (Math.abs(net) < 0.01) {
-        el.innerHTML = `<span class="balance-neutral">Équilibre ✓</span>`;
-        return;
-    }
-    const debtor   = net > 0 ? m1 : m0;
-    const creditor = net > 0 ? m0 : m1;
-    const cls      = net > 0 ? 'owes' : 'owed';
-    el.innerHTML = `
-        <div class="balance-name">${escapeHtml(debtor)} doit à ${escapeHtml(creditor)}</div>
-        <div class="balance-amount ${cls}">${formatAmount(Math.abs(net))} €</div>`;
-}
-
 // ─── Render expenses ──────────────────────────────────────────────
 function renderExpenses(expenses) {
     expensesCache = expenses;
     const container = document.getElementById('expensesContainer');
-    const total = expenses.reduce((s, e) => s + parseFloat(e.amount), 0);
-    document.getElementById('totalSpent').textContent = formatAmount(total);
-
-    if (IS_COUPLE_MODE) renderBalance(expenses);
 
     if (expenses.length === 0) {
         container.innerHTML = `<div class="empty-state"><div class="empty-icon">💸</div><p>Aucune dépense ce mois</p></div>`;
@@ -185,7 +138,6 @@ function renderBudgetPicker(selectedType, selectedId = null) {
 // ─── Modal ────────────────────────────────────────────────────────
 const { modal, open: openOverlay, close: closeOverlay } = initModal('modalOverlay', 'modal', 'modalClose');
 
-// paidByToggle est null en mode solo (pas de #paidByGroup dans le DOM)
 const paidByToggle = IS_COUPLE_MODE
     ? initToggleGroup('paidByGroup', 'expensePaidBy')
     : null;
@@ -256,7 +208,7 @@ document.getElementById('expenseForm').addEventListener('submit', async e => {
 
     if (!name || isNaN(amount) || amount <= 0) return;
 
-    // Dérivation automatique de for_whom
+    // for_whom : commun → tous les membres, personnel → payeur
     let for_whom;
     if (expType === 'commun') {
         for_whom = MEMBERS.map(m => m.name).join(',');

@@ -882,6 +882,99 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     border-color: var(--danger);
 }
 
+/* ─── Analyse page ───────────────────────────────────────────────── */
+.analyse-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.analyse-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-card);
+    padding: 18px 16px;
+    margin-bottom: 12px;
+}
+
+.analyse-card--full {
+    grid-column: 1 / -1;
+}
+
+.analyse-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+}
+
+.analyse-amount {
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+}
+
+.analyse-value {
+    font-size: 30px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1;
+}
+
+.analyse-currency {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.analyse-sub {
+    display: block;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 6px;
+}
+
+/* Couleurs par membre sur les cartes */
+.member-card-0 { border-color: rgba(74,158,255,0.35); }
+.member-card-1 { border-color: rgba(255,107,157,0.35); }
+
+.member-text-0 { color: #4a9eff; }
+.member-text-1 { color: #ff6b9d; }
+
+/* Balance */
+.analyse-balance-card { text-align: center; }
+
+.analyse-balance-summary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 12px 0 6px;
+    font-size: 18px;
+    font-weight: 700;
+    flex-wrap: wrap;
+}
+
+.analyse-balance-arrow {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.analyse-balance-amount {
+    font-size: 36px;
+    font-weight: 800;
+    margin-bottom: 10px;
+}
+
+.analyse-balance-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
 /* ─── Desktop adjustments ────────────────────────────────────────── */
 @media (min-width: 480px) {
     .app {
