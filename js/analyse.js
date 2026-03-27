@@ -16,6 +16,7 @@ function renderAnalyse(data) {
 
     const currentMember = members.find(m => m.id === CURRENT_USER.id)
                        ?? members.find(m => m.name === CURRENT_USER.name);
+    const partner = members.find(m => m.id !== CURRENT_USER.id);
 
     if (data.foyer_total === 0) {
         container.innerHTML = `
@@ -29,70 +30,89 @@ function renderAnalyse(data) {
     let html = '';
 
     // ══ BLOC FOYER ════════════════════════════════════════════════
-    html += `<div class="analyse-bloc">
-        <h2 class="analyse-bloc-title">Foyer</h2>`;
+    const perPerson = members.length > 0 ? commun_total / members.length : commun_total;
+    const partnerName = partner ? escapeHtml(partner.name) : '';
 
-    // Total commun
-    html += `
-    <div class="analyse-card analyse-card--full">
-        <span class="analyse-label">Dépenses communes</span>
-        <div class="analyse-amount">
-            <span class="analyse-value">${formatAmount(commun_total)}</span>
-            <span class="analyse-currency">€</span>
-        </div>
-    </div>`;
+    // Phrase d'intro
+    const intro = partner
+        ? `Ce mois-ci, avec ${partnerName} vous avez dépensé`
+        : `Ce mois-ci vous avez dépensé`;
 
-    // Balance (couple uniquement)
+    // Phrase de partage
+    const partageHtml = commun_total > 0 && members.length >= 2
+        ? `<p class="foyer-card-sub">Soit <strong>${formatAmount(perPerson)} €</strong> chacun</p>`
+        : '';
+
+    // Phrase de balance
+    let balanceHtml = '';
     if (members.length >= 2) {
         const creditor = members.find(m => m.balance > 0.005);
         const debtor   = members.find(m => m.balance < -0.005);
 
-        html += `<div class="analyse-card analyse-card--full analyse-balance-card">`;
-
         if (!creditor || !debtor || Math.abs(creditor.balance) < 0.01) {
-            html += `
-                <span class="analyse-label">Balance</span>
-                <div class="balance-neutral" style="font-size:22px;font-weight:700;margin-top:8px;">Équilibre ✓</div>
-                <p class="analyse-balance-desc">Chacun a payé sa part exacte.</p>`;
+            balanceHtml = `
+            <div class="foyer-balance foyer-balance--ok">
+                <span class="foyer-balance-icon">✓</span>
+                <span>Les comptes sont bons, personne n'a de dette</span>
+            </div>`;
         } else {
-            const amount   = formatAmount(Math.abs(creditor.balance));
-            const credIdx  = members.indexOf(creditor);
-            const debtIdx  = members.indexOf(debtor);
-            html += `
-                <span class="analyse-label">Balance</span>
-                <div class="analyse-balance-summary">
-                    <span class="analyse-balance-debtor member-text-${debtIdx}">${escapeHtml(debtor.name)}</span>
-                    <span class="analyse-balance-arrow">doit à</span>
-                    <span class="analyse-balance-creditor member-text-${credIdx}">${escapeHtml(creditor.name)}</span>
-                </div>
-                <div class="analyse-balance-amount member-text-${credIdx}">${amount} €</div>
-                <p class="analyse-balance-desc">
-                    ${escapeHtml(creditor.name)} a avancé ${formatAmount(creditor.paid)} € mais sa part réelle est ${formatAmount(creditor.share)} €.
-                </p>`;
+            const amount = formatAmount(Math.abs(creditor.balance));
+            let sentence;
+            if (currentMember && creditor.id === currentMember.id) {
+                // Le partenaire me doit
+                sentence = `${partnerName} te doit <strong>${amount} €</strong>`;
+            } else if (currentMember && debtor.id === currentMember.id) {
+                // Je dois au partenaire
+                sentence = `Tu dois <strong>${amount} €</strong> à ${escapeHtml(creditor.name)}`;
+            } else {
+                // Vue neutre (ne devrait pas arriver)
+                sentence = `${escapeHtml(debtor.name)} doit <strong>${amount} €</strong> à ${escapeHtml(creditor.name)}`;
+            }
+            balanceHtml = `
+            <div class="foyer-balance foyer-balance--debt">
+                <span class="foyer-balance-icon">💸</span>
+                <span>${sentence}</span>
+            </div>`;
         }
-
-        html += `</div>`;
     }
 
-    html += `</div>`; // fin bloc foyer
+    html += `
+    <div class="foyer-card">
+        <div class="foyer-card-header">
+            <span class="foyer-card-tag">🏠 Foyer</span>
+        </div>
+        <p class="foyer-card-intro">${intro}</p>
+        <div class="foyer-card-amount">
+            <span class="foyer-card-value">${formatAmount(commun_total)}</span>
+            <span class="foyer-card-currency">€</span>
+        </div>
+        ${partageHtml}
+        ${balanceHtml}
+    </div>`;
 
     // ══ BLOC PERSONNEL ════════════════════════════════════════════
     if (currentMember) {
-        html += `<div class="analyse-bloc">
-            <h2 class="analyse-bloc-title">Personnel</h2>`;
+        const partnerNames = members
+            .filter(m => m.id !== CURRENT_USER.id)
+            .map(m => escapeHtml(m.name))
+            .join(' et ');
 
-        // share = ma part du foyer + mes dépenses perso (exclut ce que j'ai avancé pour l'autre)
+        const advanceNote = partner
+            ? `Les avances faites pour ${partnerNames} ne sont pas comptées.`
+            : '';
+
         html += `
-        <div class="analyse-card analyse-card--full">
-            <span class="analyse-label">Mes dépenses réelles</span>
-            <div class="analyse-amount">
-                <span class="analyse-value">${formatAmount(currentMember.share)}</span>
-                <span class="analyse-currency">€</span>
-            </div>
-            <p class="analyse-balance-desc">Ma part des dépenses communes + mes dépenses personnelles.<br>Les avances faites pour ${members.filter(m => m.id !== CURRENT_USER.id).map(m => escapeHtml(m.name)).join(' et ') || 'l\'autre'} ne sont pas comptées.</p>
-        </div>`;
-
-        html += `</div>`; // fin bloc personnel
+    <div class="perso-card">
+        <div class="perso-card-header">
+            <span class="perso-card-tag">👤 Personnel</span>
+        </div>
+        <p class="perso-card-intro">Tu as réellement dépensé pour toi</p>
+        <div class="perso-card-amount">
+            <span class="perso-card-value">${formatAmount(currentMember.share)}</span>
+            <span class="perso-card-currency">€</span>
+        </div>
+        ${advanceNote ? `<p class="perso-card-sub">${advanceNote}</p>` : ''}
+    </div>`;
     }
 
     container.innerHTML = html;

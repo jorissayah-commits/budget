@@ -889,109 +889,156 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 /* ─── Analyse page ───────────────────────────────────────────────── */
-.analyse-bloc {
-    margin-bottom: 28px;
+
+/* Carte Foyer */
+.foyer-card {
+    background: linear-gradient(135deg, #1a1d35 0%, #1e1a4a 100%);
+    border: 1px solid rgba(124,111,247,0.35);
+    border-radius: var(--radius-card);
+    padding: 22px 20px 18px;
+    margin-bottom: 14px;
 }
 
-.analyse-bloc-title {
-    font-size: 13px;
+.foyer-card-header {
+    margin-bottom: 14px;
+}
+
+.foyer-card-tag {
+    display: inline-block;
+    font-size: 12px;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.07em;
+    color: var(--accent-hover);
+    background: rgba(124,111,247,0.15);
+    padding: 4px 10px;
+    border-radius: 50px;
+}
+
+.foyer-card-intro {
+    font-size: 14px;
     color: var(--text-secondary);
-    margin: 0 0 10px 4px;
+    margin-bottom: 6px;
 }
 
-.analyse-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-bottom: 12px;
+.foyer-card-amount {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin-bottom: 6px;
 }
 
-.analyse-card {
+.foyer-card-value {
+    font-size: 40px;
+    font-weight: 800;
+    color: #fff;
+    line-height: 1;
+}
+
+.foyer-card-currency {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--accent-hover);
+}
+
+.foyer-card-sub {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+}
+
+.foyer-card-sub strong {
+    color: var(--text-primary);
+}
+
+/* Balance dans la carte foyer */
+.foyer-balance {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 14px;
+    line-height: 1.4;
+    margin-top: 8px;
+}
+
+.foyer-balance strong {
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.foyer-balance--ok {
+    background: rgba(52,199,89,0.12);
+    color: #34c759;
+}
+
+.foyer-balance--debt {
+    background: rgba(255,71,87,0.10);
+    color: #ff8a97;
+}
+
+.foyer-balance-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+/* Carte Personnel */
+.perso-card {
     background: var(--card-bg);
     border: 1px solid var(--card-border);
     border-radius: var(--radius-card);
-    padding: 18px 16px;
-    margin-bottom: 12px;
+    padding: 22px 20px 18px;
+    margin-bottom: 14px;
 }
 
-.analyse-card--full {
-    grid-column: 1 / -1;
+.perso-card-header {
+    margin-bottom: 14px;
 }
 
-.analyse-label {
-    display: block;
-    font-size: 13px;
-    font-weight: 500;
+.perso-card-tag {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
     color: var(--text-secondary);
-    margin-bottom: 10px;
+    background: rgba(255,255,255,0.06);
+    padding: 4px 10px;
+    border-radius: 50px;
 }
 
-.analyse-amount {
+.perso-card-intro {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+}
+
+.perso-card-amount {
     display: flex;
     align-items: baseline;
-    gap: 5px;
+    gap: 6px;
+    margin-bottom: 6px;
 }
 
-.analyse-value {
-    font-size: 30px;
-    font-weight: 700;
+.perso-card-value {
+    font-size: 40px;
+    font-weight: 800;
     color: var(--text-primary);
     line-height: 1;
 }
 
-.analyse-currency {
-    font-size: 20px;
-    font-weight: 600;
-    color: var(--text-secondary);
-}
-
-.analyse-sub {
-    display: block;
-    font-size: 12px;
-    color: var(--text-muted);
-    margin-top: 6px;
-}
-
-/* Couleurs par membre sur les cartes */
-.member-card-0 { border-color: rgba(74,158,255,0.35); }
-.member-card-1 { border-color: rgba(255,107,157,0.35); }
-
-.member-text-0 { color: #4a9eff; }
-.member-text-1 { color: #ff6b9d; }
-
-/* Balance */
-.analyse-balance-card { text-align: center; }
-
-.analyse-balance-summary {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    margin: 12px 0 6px;
-    font-size: 18px;
+.perso-card-currency {
+    font-size: 24px;
     font-weight: 700;
-    flex-wrap: wrap;
-}
-
-.analyse-balance-arrow {
-    font-size: 14px;
-    font-weight: 500;
     color: var(--text-secondary);
 }
 
-.analyse-balance-amount {
-    font-size: 36px;
-    font-weight: 800;
-    margin-bottom: 10px;
-}
-
-.analyse-balance-desc {
+.perso-card-sub {
     font-size: 13px;
-    color: var(--text-secondary);
+    color: var(--text-muted);
     line-height: 1.5;
+    margin-top: 4px;
 }
 
 /* ─── Desktop adjustments ────────────────────────────────────────── */
