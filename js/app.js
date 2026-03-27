@@ -102,11 +102,14 @@ document.getElementById('nextMonth').addEventListener('click', () => {
 });
 
 // ─── Budget picker ────────────────────────────────────────────────
-function renderBudgetPicker(selectedType, selectedId = null) {
+// pourValue : 'foyer' | nom d'un membre (ex: 'Joris')
+function renderBudgetPicker(pourValue, selectedId = null) {
     const picker   = document.getElementById('budgetPicker');
-    const filtered = allBudgets.filter(b =>
-        selectedType === 'commun' ? b.type === 'commun' : b.type.startsWith('perso_')
-    );
+    const filtered = allBudgets.filter(b => {
+        if (pourValue === 'foyer') return b.type === 'commun';
+        const member = MEMBERS.find(m => m.name === pourValue);
+        return member ? b.type === 'perso_' + member.id : false;
+    });
 
     const noBudgetActive = !selectedId ? 'active' : '';
     let html = `<button type="button" class="budget-pick-btn ${noBudgetActive}" data-id="">
@@ -135,6 +138,16 @@ function renderBudgetPicker(selectedType, selectedId = null) {
     });
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────
+// Reconstruit la valeur "pour" depuis les données d'une dépense existante
+function getPourValue(exp) {
+    if (!exp.for_whom) return 'foyer';
+    const names = exp.for_whom.split(',').map(s => s.trim()).filter(Boolean);
+    if (names.length >= MEMBERS.length) return 'foyer';
+    if (names.length === 1 && MEMBERS.find(m => m.name === names[0])) return names[0];
+    return 'foyer';
+}
+
 // ─── Modal ────────────────────────────────────────────────────────
 const { modal, open: openOverlay, close: closeOverlay } = initModal('modalOverlay', 'modal', 'modalClose');
 
@@ -154,8 +167,8 @@ function openAddModal() {
     document.getElementById('expenseForm').reset();
     document.getElementById('expenseDate').value = todayISO();
     if (paidByToggle) paidByToggle.setValues([CURRENT_USER.name]);
-    typeToggle.setValues(['commun']);
-    renderBudgetPicker('commun');
+    typeToggle.setValues(['foyer']);
+    renderBudgetPicker('foyer');
     openOverlay();
     setTimeout(() => document.getElementById('expenseName').focus(), 350);
 }
@@ -169,10 +182,11 @@ function openEditModal(exp) {
     document.getElementById('expenseAmount').value    = exp.amount;
     document.getElementById('expenseDate').value      = exp.date;
 
-    const type = exp.budget_type === 'commun' ? 'commun' : (exp.budget_id ? 'personnel' : 'commun');
+    // Reconstruire la valeur "pour" depuis for_whom
+    const pourValue = getPourValue(exp);
     if (paidByToggle) paidByToggle.setValues([exp.paid_by || MEMBERS[0].name]);
-    typeToggle.setValues([type]);
-    renderBudgetPicker(type, exp.budget_id);
+    typeToggle.setValues([pourValue]);
+    renderBudgetPicker(pourValue, exp.budget_id);
     openOverlay();
     setTimeout(() => document.getElementById('expenseName').focus(), 350);
 }
@@ -208,19 +222,12 @@ document.getElementById('expenseForm').addEventListener('submit', async e => {
 
     if (!name || isNaN(amount) || amount <= 0) return;
 
-    // for_whom : commun → tous les membres, personnel → payeur
-    let for_whom;
-    if (expType === 'commun') {
-        for_whom = MEMBERS.map(m => m.name).join(',');
-    } else {
-        const budget = allBudgets.find(b => String(b.id) === String(budget_id));
-        if (budget) {
-            const memberId = getMemberIdFromBudgetType(budget.type);
-            for_whom = memberId ? getMemberName(memberId) : paid_by;
-        } else {
-            for_whom = paid_by;
-        }
-    }
+    // for_whom dérivé de "pour" :
+    //   foyer    → tous les membres du foyer
+    //   prénom   → ce membre uniquement
+    const for_whom = expType === 'foyer'
+        ? MEMBERS.map(m => m.name).join(',')
+        : expType; // le nom du membre sélectionné
 
     const btn = document.getElementById('submitBtn');
     btn.disabled = true;

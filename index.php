@@ -65,12 +65,14 @@
             <?php endif; ?>
 
             <div class="form-group">
-                <label>Type</label>
+                <label>Pour</label>
                 <div class="toggle-group" id="expenseTypeGroup">
-                    <button type="button" class="toggle-btn active" data-value="commun">Commun</button>
-                    <button type="button" class="toggle-btn" data-value="personnel">Personnel</button>
+                    <button type="button" class="toggle-btn active" data-value="foyer">Foyer</button>
+                    <?php foreach ($foyerMembers as $m): ?>
+                        <button type="button" class="toggle-btn" data-value="<?= htmlspecialchars($m['name']) ?>"><?= htmlspecialchars($m['name']) ?></button>
+                    <?php endforeach; ?>
                 </div>
-                <input type="hidden" id="expenseType" value="commun">
+                <input type="hidden" id="expenseType" value="foyer">
             </div>
             <div class="form-group" id="budgetPickerGroup">
                 <label>Budget</label>
