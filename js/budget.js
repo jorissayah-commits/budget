@@ -1,11 +1,17 @@
 'use strict';
 
 // ─── State ────────────────────────────────────────────────────────
-let editingId = null;
+let editingId   = null;
+let budgetsCache = [];
 
+// Labels dynamiques basés sur les membres du foyer
 const TYPE_LABELS = { commun: { label: 'Commun', icon: '🏠' } };
-MEMBERS.forEach(m => {
-    TYPE_LABELS['perso_' + m.id] = { label: 'Perso ' + m.name, icon: '👤' };
+MEMBERS.forEach((m, idx) => {
+    TYPE_LABELS['perso_' + m.id] = {
+        label: 'Perso ' + m.name,
+        icon:  '👤',
+        memberIdx: idx,
+    };
 });
 
 // ─── Render ───────────────────────────────────────────────────────
@@ -31,7 +37,7 @@ async function loadBudgets() {
         return;
     }
 
-    // Group by type (préserve l'ordre : commun, puis chaque perso)
+    // Grouper par type (commun d'abord, puis perso de chaque membre)
     const groups = {};
     BUDGET_TYPES.forEach(t => groups[t] = []);
     budgets.forEach(b => { if (groups[b.type]) groups[b.type].push(b); });
@@ -39,7 +45,11 @@ async function loadBudgets() {
     let html = '';
     for (const [type, items] of Object.entries(groups)) {
         if (items.length === 0) continue;
-        const { label, icon } = TYPE_LABELS[type] || { label: type, icon: '📦' };
+        const info        = TYPE_LABELS[type] || { label: type, icon: '📦', memberIdx: -1 };
+        const { label, icon, memberIdx } = info;
+        const badgeClass  = type === 'commun'
+            ? 'budget-type-commun'
+            : `budget-type-perso member-${memberIdx ?? 0}`;
         const total = items.reduce((s, b) => s + parseFloat(b.amount), 0);
 
         html += `
@@ -55,7 +65,7 @@ async function loadBudgets() {
                 <div class="expense-icon">${icon}</div>
                 <div class="expense-info">
                     <div class="expense-name">${escapeHtml(b.name)}</div>
-                    <span class="expense-badge budget-type-badge budget-type-${b.type}">${escapeHtml(label)}</span>
+                    <span class="expense-badge budget-type-badge ${badgeClass}">${escapeHtml(label)}</span>
                 </div>
                 <div class="expense-right">
                     <span class="expense-amount">${formatAmount(b.amount)}&nbsp;€</span>
@@ -78,8 +88,6 @@ async function loadBudgets() {
         });
     });
 }
-
-let budgetsCache = [];
 
 // ─── Modal ────────────────────────────────────────────────────────
 const { modal, open: openOverlay, close: closeOverlay } = initModal('modalOverlay', 'modal', 'modalClose');

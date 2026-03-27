@@ -18,12 +18,14 @@
                 <span class="stat-currency">€</span>
             </div>
         </div>
+        <?php if (count($foyerMembers) >= 2): ?>
         <div class="stat-card">
             <span class="stat-label">Solde</span>
             <div class="balance-info" id="balanceInfo">
                 <span class="balance-neutral">—</span>
             </div>
         </div>
+        <?php endif; ?>
     </div>
 
     <!-- Liste des dépenses -->
@@ -66,15 +68,21 @@
                     <span class="input-suffix">€</span>
                 </div>
             </div>
+
+            <?php if (count($foyerMembers) >= 2): ?>
             <div class="form-group">
                 <label>Payé par</label>
                 <div class="toggle-group" id="paidByGroup">
-                    <?php foreach (MEMBERS as $m): ?>
-                        <button type="button" class="toggle-btn" data-value="<?= $m['name'] ?>"><?= $m['name'] ?></button>
+                    <?php foreach ($foyerMembers as $m): ?>
+                        <button type="button" class="toggle-btn" data-value="<?= htmlspecialchars($m['name']) ?>"><?= htmlspecialchars($m['name']) ?></button>
                     <?php endforeach; ?>
                 </div>
-                <input type="hidden" id="expensePaidBy" value="<?= $currentUser['name'] ?>">
+                <input type="hidden" id="expensePaidBy" value="<?= htmlspecialchars($currentUser['name']) ?>">
             </div>
+            <?php else: ?>
+                <input type="hidden" id="expensePaidBy" value="<?= htmlspecialchars($currentUser['name']) ?>">
+            <?php endif; ?>
+
             <div class="form-group">
                 <label>Type</label>
                 <div class="toggle-group" id="expenseTypeGroup">

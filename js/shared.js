@@ -6,8 +6,11 @@
  */
 
 // ─── Config ──────────────────────────────────────────────────────
-const MEMBERS      = window.APP_CONFIG.members;       // [{id, name}, ...]
-const BUDGET_TYPES = window.APP_CONFIG.budgetTypes;   // ['commun', 'perso_joris', ...]
+const MEMBERS       = window.APP_CONFIG.members;       // [{id: int, name: string}, ...]
+const BUDGET_TYPES  = window.APP_CONFIG.budgetTypes;   // ['commun', 'perso_1', ...]
+const CURRENT_USER  = window.APP_CONFIG.currentUser;   // {id: int, name: string}
+const FOYER_ID      = window.APP_CONFIG.foyerId;       // int | null
+const IS_COUPLE_MODE = window.APP_CONFIG.isCoupleMode; // true si foyer avec 2+ membres
 
 const MONTHS_FR = [
     'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
@@ -48,20 +51,22 @@ function formatDayLabel(dateStr) {
 
 // ─── Member helpers ──────────────────────────────────────────────
 function getMemberName(id) {
-    const m = MEMBERS.find(m => m.id === id);
-    return m ? m.name : id;
+    const m = MEMBERS.find(m => String(m.id) === String(id));
+    return m ? m.name : String(id);
 }
 
+/** 'perso_1' → '1',  'perso_42' → '42',  'commun' → null */
 function getMemberIdFromBudgetType(budgetType) {
-    // 'perso_joris' → 'joris', 'perso_sabrine' → 'sabrine'
     if (budgetType && budgetType.startsWith('perso_')) {
         return budgetType.replace('perso_', '');
     }
     return null;
 }
 
-// ─── Current user shortcut ───────────────────────────────────────
-const CURRENT_USER = window.APP_CONFIG.currentUser; // {id, name}
+/** Index (0-based) du membre dans le foyer, pour les couleurs CSS */
+function getMemberIndex(name) {
+    return MEMBERS.findIndex(m => m.name === name);
+}
 
 // ─── API helpers ─────────────────────────────────────────────────
 function checkAuth(res) {

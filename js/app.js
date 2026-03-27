@@ -2,11 +2,11 @@
 
 // ─── State ────────────────────────────────────────────────────────
 const now = new Date();
-let currentYear  = now.getFullYear();
-let currentMonth = now.getMonth();
-let editingId    = null;
-let allBudgets   = [];
-let expensesCache = []; // les dépenses du mois courant, pour lookup par ID
+let currentYear   = now.getFullYear();
+let currentMonth  = now.getMonth();
+let editingId     = null;
+let allBudgets    = [];
+let expensesCache = [];
 
 // ─── Month helpers ────────────────────────────────────────────────
 function getMonthKey() {
@@ -17,11 +17,11 @@ function getMonthTitle() {
     return `${MONTHS_FR[currentMonth]} ${currentYear}`;
 }
 
-// ─── Balance ──────────────────────────────────────────────────────
+// ─── Balance (mode couple uniquement) ────────────────────────────
 function computeBalance(expenses) {
-    // net > 0 : member[1] doit à member[0] / net < 0 : member[0] doit à member[1]
-    const m0 = MEMBERS[0].name;
-    const m1 = MEMBERS[1].name;
+    // net > 0 : member[1] doit à member[0]  /  net < 0 : member[0] doit à member[1]
+    const m0  = MEMBERS[0].name;
+    const m1  = MEMBERS[1].name;
     let net = 0;
 
     expenses.forEach(exp => {
@@ -41,10 +41,12 @@ function computeBalance(expenses) {
 }
 
 function renderBalance(expenses) {
+    const el = document.getElementById('balanceInfo');
+    if (!el) return; // pas affiché en mode solo
+
     const m0  = MEMBERS[0].name;
     const m1  = MEMBERS[1].name;
     const net = computeBalance(expenses);
-    const el  = document.getElementById('balanceInfo');
 
     if (Math.abs(net) < 0.01) {
         el.innerHTML = `<span class="balance-neutral">Équilibre ✓</span>`;
@@ -54,7 +56,7 @@ function renderBalance(expenses) {
     const creditor = net > 0 ? m0 : m1;
     const cls      = net > 0 ? 'owes' : 'owed';
     el.innerHTML = `
-        <div class="balance-name">${debtor} doit à ${creditor}</div>
+        <div class="balance-name">${escapeHtml(debtor)} doit à ${escapeHtml(creditor)}</div>
         <div class="balance-amount ${cls}">${formatAmount(Math.abs(net))} €</div>`;
 }
 
@@ -64,14 +66,15 @@ function renderExpenses(expenses) {
     const container = document.getElementById('expensesContainer');
     const total = expenses.reduce((s, e) => s + parseFloat(e.amount), 0);
     document.getElementById('totalSpent').textContent = formatAmount(total);
-    renderBalance(expenses);
+
+    if (IS_COUPLE_MODE) renderBalance(expenses);
 
     if (expenses.length === 0) {
         container.innerHTML = `<div class="empty-state"><div class="empty-icon">💸</div><p>Aucune dépense ce mois</p></div>`;
         return;
     }
 
-    // Group by date
+    // Grouper par date
     const groups = {};
     expenses.forEach(exp => {
         if (!groups[exp.date]) groups[exp.date] = [];
@@ -83,7 +86,8 @@ function renderExpenses(expenses) {
         html += `<div class="date-group"><div class="date-label">${formatDayLabel(date)}</div>`;
         groups[date].forEach(exp => {
             const paidBy     = exp.paid_by || MEMBERS[0].name;
-            const payerClass = paidBy.toLowerCase();
+            const memberIdx  = getMemberIndex(paidBy);
+            const payerClass = memberIdx >= 0 ? `member-${memberIdx}` : 'member-0';
             const budgetName = exp.budget_name || '';
             const budgetType = exp.budget_type || '';
             const typeLabel  = budgetType === 'commun' ? 'Commun' : 'Personnel';
@@ -94,7 +98,7 @@ function renderExpenses(expenses) {
                 <div class="expense-info">
                     <div class="expense-name">${escapeHtml(exp.name)}</div>
                     <span class="expense-badge">${escapeHtml(budgetName || typeLabel)}</span>
-                    <span class="expense-payer ${payerClass}">${escapeHtml(paidBy)}</span>
+                    ${IS_COUPLE_MODE ? `<span class="expense-payer ${payerClass}">${escapeHtml(paidBy)}</span>` : ''}
                 </div>
                 <div class="expense-right">
                     <span class="expense-amount">${formatAmount(exp.amount)}&nbsp;€</span>
@@ -107,7 +111,6 @@ function renderExpenses(expenses) {
 
     container.innerHTML = html;
 
-    // Click → lookup from cache by ID (pas de JSON dans le DOM)
     container.querySelectorAll('.expense-item').forEach(item => {
         item.addEventListener('click', () => {
             const id  = parseInt(item.dataset.id, 10);
@@ -147,12 +150,11 @@ document.getElementById('nextMonth').addEventListener('click', () => {
 
 // ─── Budget picker ────────────────────────────────────────────────
 function renderBudgetPicker(selectedType, selectedId = null) {
-    const picker = document.getElementById('budgetPicker');
+    const picker   = document.getElementById('budgetPicker');
     const filtered = allBudgets.filter(b =>
         selectedType === 'commun' ? b.type === 'commun' : b.type.startsWith('perso_')
     );
 
-    // Option "Sans budget" toujours disponible en premier
     const noBudgetActive = !selectedId ? 'active' : '';
     let html = `<button type="button" class="budget-pick-btn ${noBudgetActive}" data-id="">
         <span class="budget-pick-name">Sans budget</span>
@@ -183,8 +185,12 @@ function renderBudgetPicker(selectedType, selectedId = null) {
 // ─── Modal ────────────────────────────────────────────────────────
 const { modal, open: openOverlay, close: closeOverlay } = initModal('modalOverlay', 'modal', 'modalClose');
 
-const paidByToggle  = initToggleGroup('paidByGroup',     'expensePaidBy');
-const typeToggle    = initToggleGroup('expenseTypeGroup', 'expenseType', {
+// paidByToggle est null en mode solo (pas de #paidByGroup dans le DOM)
+const paidByToggle = IS_COUPLE_MODE
+    ? initToggleGroup('paidByGroup', 'expensePaidBy')
+    : null;
+
+const typeToggle = initToggleGroup('expenseTypeGroup', 'expenseType', {
     onChange: val => renderBudgetPicker(val)
 });
 
@@ -195,7 +201,7 @@ function openAddModal() {
     document.getElementById('submitBtn').textContent  = 'Ajouter';
     document.getElementById('expenseForm').reset();
     document.getElementById('expenseDate').value = todayISO();
-    paidByToggle.setValues([CURRENT_USER.name]);
+    if (paidByToggle) paidByToggle.setValues([CURRENT_USER.name]);
     typeToggle.setValues(['commun']);
     renderBudgetPicker('commun');
     openOverlay();
@@ -212,7 +218,7 @@ function openEditModal(exp) {
     document.getElementById('expenseDate').value      = exp.date;
 
     const type = exp.budget_type === 'commun' ? 'commun' : (exp.budget_id ? 'personnel' : 'commun');
-    paidByToggle.setValues([exp.paid_by || MEMBERS[0].name]);
+    if (paidByToggle) paidByToggle.setValues([exp.paid_by || MEMBERS[0].name]);
     typeToggle.setValues([type]);
     renderBudgetPicker(type, exp.budget_id);
     openOverlay();
@@ -226,7 +232,6 @@ function closeModal() {
     editingId = null;
 }
 
-// Re-bind close to our extended version
 document.getElementById('modalClose').addEventListener('click', closeModal);
 document.getElementById('addBtn').addEventListener('click', openAddModal);
 
@@ -244,7 +249,7 @@ document.getElementById('expenseForm').addEventListener('submit', async e => {
     e.preventDefault();
     const name      = document.getElementById('expenseName').value.trim();
     const amount    = parseFloat(document.getElementById('expenseAmount').value);
-    const paid_by   = paidByToggle.getValue();
+    const paid_by   = paidByToggle ? paidByToggle.getValue() : CURRENT_USER.name;
     const expType   = typeToggle.getValue();
     const budget_id = document.getElementById('expenseBudgetId').value;
     const date      = document.getElementById('expenseDate').value;

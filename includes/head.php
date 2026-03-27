@@ -1,6 +1,12 @@
 <?php
 require_once __DIR__ . '/auth.php';
-$currentUser = requireAuth();
+require_once __DIR__ . '/../db/database.php';
+
+$currentUser  = requireAuth();
+$foyerCtx     = getFoyerContext($pdo, $currentUser['id']);
+$foyerMembers = $foyerCtx['members'];
+$foyerId      = $foyerCtx['foyer_id'];
+$budgetTypes  = getAllowedBudgetTypes($foyerMembers);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -21,8 +27,10 @@ $currentUser = requireAuth();
 <!-- Config JS injectée depuis PHP (source unique de vérité) -->
 <script>
     window.APP_CONFIG = {
-        members: <?= json_encode(MEMBERS) ?>,
-        budgetTypes: <?= json_encode(getAllowedBudgetTypes()) ?>,
-        currentUser: <?= json_encode($currentUser) ?>
+        members:      <?= json_encode($foyerMembers) ?>,
+        budgetTypes:  <?= json_encode($budgetTypes) ?>,
+        currentUser:  <?= json_encode($currentUser) ?>,
+        foyerId:      <?= json_encode($foyerId) ?>,
+        isCoupleMode: <?= json_encode(count($foyerMembers) >= 2) ?>
     };
 </script>

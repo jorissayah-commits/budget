@@ -42,7 +42,9 @@
                 <label>Type</label>
                 <div class="toggle-group" id="budgetTypeGroup">
                     <button type="button" class="toggle-btn active" data-value="commun">Commun</button>
-                    <button type="button" class="toggle-btn" data-value="perso_<?= $currentUser['id'] ?>">Perso <?= $currentUser['name'] ?></button>
+                    <button type="button" class="toggle-btn" data-value="perso_<?= $currentUser['id'] ?>">
+                        Perso <?= htmlspecialchars($currentUser['name']) ?>
+                    </button>
                 </div>
                 <input type="hidden" id="budgetType" value="commun">
             </div>

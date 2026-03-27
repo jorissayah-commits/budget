@@ -12,11 +12,11 @@ if (!empty($_SESSION['user_id'])) {
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $login    = trim($_POST['login'] ?? '');
+    $email    = strtolower(trim($_POST['email'] ?? ''));
     $password = $_POST['password'] ?? '';
 
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
-    $stmt->execute([strtolower($login)]);
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
+    $stmt->execute([$email]);
     $user = $stmt->fetch();
 
     if ($user && password_verify($password, $user['password_hash'])) {
@@ -26,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    $error = 'Identifiant ou mot de passe incorrect';
+    $error = 'Email ou mot de passe incorrect';
 }
 ?>
 <!DOCTYPE html>
@@ -54,9 +54,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <form method="POST" novalidate>
             <div class="form-group">
-                <label for="login">Identifiant</label>
-                <input type="text" id="login" name="login" placeholder="joris ou sabrine"
-                       autocomplete="username" autocapitalize="none" required>
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email"
+                       placeholder="vous@exemple.com"
+                       autocomplete="email" required>
             </div>
             <div class="form-group">
                 <label for="password">Mot de passe</label>
@@ -65,6 +66,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
             <button type="submit" class="submit-btn">Se connecter</button>
         </form>
+
+        <p class="login-link">Pas encore de compte ? <a href="register.php">Créer un compte</a></p>
     </div>
 </div>
 
