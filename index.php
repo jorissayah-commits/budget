@@ -25,18 +25,30 @@
 
 </div>
 
-<!-- Bouton ajouter -->
+<!-- Bouton principal -->
 <div class="add-btn-wrapper">
-    <button class="add-btn" id="addBtn">
+    <button class="add-btn" id="mainAddBtn">
         <span class="add-icon">+</span>
-        Ajouter une dépense
+        Ajouter
     </button>
-    <?php if (count($foyerMembers) >= 2): ?>
-    <button class="add-btn add-btn--transfer" id="addTransferBtn">
-        <span class="add-icon">↗</span>
-        Virement à <?= htmlspecialchars(array_values(array_filter($foyerMembers, fn($m) => $m['id'] !== $currentUser['id']))[0]['name'] ?? 'partenaire') ?>
-    </button>
-    <?php endif; ?>
+</div>
+
+<!-- Action sheet -->
+<div class="action-sheet-overlay" id="actionSheetOverlay">
+    <div class="action-sheet" id="actionSheet">
+        <button class="action-sheet-item" id="addBtn">
+            <span class="action-sheet-icon">💸</span>
+            <span class="action-sheet-label">Dépense</span>
+        </button>
+        <?php if (count($foyerMembers) >= 2): ?>
+        <?php $partnerName = htmlspecialchars(array_values(array_filter($foyerMembers, fn($m) => $m['id'] !== $currentUser['id']))[0]['name'] ?? 'partenaire'); ?>
+        <button class="action-sheet-item" id="addTransferBtn">
+            <span class="action-sheet-icon">↗</span>
+            <span class="action-sheet-label">Virement à <?= $partnerName ?></span>
+        </button>
+        <?php endif; ?>
+        <button class="action-sheet-cancel" id="actionSheetCancel">Annuler</button>
+    </div>
 </div>
 
 <?php include 'includes/nav.php'; ?>

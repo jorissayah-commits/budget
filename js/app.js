@@ -296,7 +296,18 @@ function closeModal() {
 }
 
 document.getElementById('modalClose').addEventListener('click', closeModal);
-document.getElementById('addBtn').addEventListener('click', openAddModal);
+
+// ─── Action sheet ────────────────────────────────────────────────
+const actionSheetOverlay = document.getElementById('actionSheetOverlay');
+
+function openActionSheet() { actionSheetOverlay.classList.add('active'); }
+function closeActionSheet() { actionSheetOverlay.classList.remove('active'); }
+
+document.getElementById('mainAddBtn').addEventListener('click', openActionSheet);
+document.getElementById('actionSheetCancel').addEventListener('click', closeActionSheet);
+actionSheetOverlay.addEventListener('click', e => { if (e.target === actionSheetOverlay) closeActionSheet(); });
+
+document.getElementById('addBtn').addEventListener('click', () => { closeActionSheet(); openAddModal(); });
 
 document.getElementById('deleteBtn').addEventListener('click', async () => {
     if (!editingId || !confirm('Supprimer cette dépense ?')) return;
@@ -344,6 +355,7 @@ if (IS_COUPLE_MODE) {
     const partner = MEMBERS.find(m => m.id !== CURRENT_USER.id);
 
     document.getElementById('addTransferBtn').addEventListener('click', () => {
+        closeActionSheet();
         transferModal.classList.remove('edit-mode');
         document.getElementById('transferForm').reset();
         document.getElementById('transferDate').value = todayISO();
