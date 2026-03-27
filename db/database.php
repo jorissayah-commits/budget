@@ -95,6 +95,30 @@ try {
         )
     ");
 
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS incomes (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            foyer_id     INTEGER NOT NULL,
+            user_id      INTEGER NOT NULL,
+            name         TEXT    NOT NULL,
+            amount       REAL    NOT NULL,
+            day_of_month INTEGER NOT NULL,
+            created_at   DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ");
+
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS transfers (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            foyer_id   INTEGER NOT NULL,
+            from_user  TEXT    NOT NULL,
+            to_user    TEXT    NOT NULL,
+            amount     REAL    NOT NULL,
+            date       DATE    NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ");
+
 } catch (PDOException $e) {
     http_response_code(500);
     die(json_encode(['error' => 'Erreur base de données : ' . $e->getMessage()]));

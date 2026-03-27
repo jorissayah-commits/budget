@@ -6,10 +6,22 @@
     </header>
 
     <div id="budgetSections"></div>
+
+    <div class="section-divider"></div>
+
+    <header class="page-header">
+        <h1 class="page-title">Revenus</h1>
+    </header>
+
+    <div id="incomeSections"></div>
 </div>
 
-<!-- Bouton ajouter -->
-<div class="add-btn-wrapper">
+<!-- Boutons ajouter -->
+<div class="add-btn-wrapper add-btn-wrapper--dual">
+    <button class="add-btn add-btn--secondary" id="addIncomeBtn">
+        <span class="add-icon">+</span>
+        Nouveau revenu
+    </button>
     <button class="add-btn" id="addBudgetBtn">
         <span class="add-icon">+</span>
         Nouveau budget
@@ -50,6 +62,39 @@
             </div>
             <button type="submit" class="submit-btn" id="submitBtn">Créer</button>
             <button type="button" class="delete-btn" id="deleteBtn">Supprimer ce budget</button>
+        </form>
+    </div>
+</div>
+
+<!-- Modal revenu -->
+<div class="modal-overlay" id="incomeModalOverlay" role="dialog" aria-modal="true">
+    <div class="modal" id="incomeModal">
+        <div class="modal-handle"></div>
+        <div class="modal-header">
+            <h2 id="incomeModalTitle">Nouveau revenu</h2>
+            <button class="modal-close" id="incomeModalClose" aria-label="Fermer">&times;</button>
+        </div>
+        <form id="incomeForm" novalidate>
+            <div class="form-group">
+                <label for="incomeName">Nom du revenu</label>
+                <input type="text" id="incomeName" placeholder="Ex : Salaire, Freelance…" autocomplete="off" required>
+            </div>
+            <div class="form-group">
+                <label for="incomeAmount">Montant mensuel</label>
+                <div class="input-with-suffix">
+                    <input type="number" id="incomeAmount" placeholder="0,00" step="0.01" min="0.01" inputmode="decimal" required>
+                    <span class="input-suffix">€</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="incomeDay">Jour de réception</label>
+                <div class="input-with-suffix">
+                    <input type="number" id="incomeDay" placeholder="25" min="1" max="31" inputmode="numeric" required>
+                    <span class="input-suffix">du mois</span>
+                </div>
+            </div>
+            <button type="submit" class="submit-btn" id="incomeSubmitBtn">Créer</button>
+            <button type="button" class="delete-btn" id="incomeDeleteBtn">Supprimer ce revenu</button>
         </form>
     </div>
 </div>

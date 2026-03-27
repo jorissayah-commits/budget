@@ -1,8 +1,11 @@
 'use strict';
 
 // ─── State ────────────────────────────────────────────────────────
-let editingId   = null;
+let editingId    = null;
 let budgetsCache = [];
+
+let editingIncomeId = null;
+let incomesCache    = [];
 
 // Labels dynamiques basés sur les membres du foyer
 const TYPE_LABELS = { commun: { label: 'Commun', icon: '🏠' } };
@@ -14,7 +17,10 @@ MEMBERS.forEach((m, idx) => {
     };
 });
 
-// ─── Render ───────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+// BUDGETS
+// ═══════════════════════════════════════════════════════════════════
+
 async function loadBudgets() {
     const container = document.getElementById('budgetSections');
     container.innerHTML = '<div class="loading">Chargement…</div>';
@@ -89,7 +95,7 @@ async function loadBudgets() {
     });
 }
 
-// ─── Modal ────────────────────────────────────────────────────────
+// ─── Budget Modal ────────────────────────────────────────────────
 const { modal, open: openOverlay, close: closeOverlay } = initModal('modalOverlay', 'modal', 'modalClose');
 const typeToggle = initToggleGroup('budgetTypeGroup', 'budgetType');
 
@@ -126,7 +132,6 @@ function closeModal() {
 document.getElementById('modalClose').addEventListener('click', closeModal);
 document.getElementById('addBudgetBtn').addEventListener('click', openAddModal);
 
-// ─── Delete ──────────────────────────────────────────────────────
 document.getElementById('deleteBtn').addEventListener('click', async () => {
     if (!editingId || !confirm('Supprimer ce budget ? Les dépenses liées ne seront pas supprimées.')) return;
     try {
@@ -135,7 +140,6 @@ document.getElementById('deleteBtn').addEventListener('click', async () => {
     } catch { alert('Erreur lors de la suppression.'); }
 });
 
-// ─── Submit ──────────────────────────────────────────────────────
 document.getElementById('budgetForm').addEventListener('submit', async e => {
     e.preventDefault();
     const name   = document.getElementById('budgetName').value.trim();
@@ -158,5 +162,149 @@ document.getElementById('budgetForm').addEventListener('submit', async e => {
     }
 });
 
+// ═══════════════════════════════════════════════════════════════════
+// REVENUS
+// ═══════════════════════════════════════════════════════════════════
+
+async function loadIncomes() {
+    const container = document.getElementById('incomeSections');
+    container.innerHTML = '<div class="loading">Chargement…</div>';
+
+    let incomes;
+    try {
+        incomes = await apiFetch('/api/incomes.php');
+    } catch {
+        container.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><p>Erreur de chargement</p></div>';
+        return;
+    }
+
+    if (incomes.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">💰</div>
+                <p>Aucun revenu configuré</p>
+                <p style="margin-top:8px;font-size:13px;">Appuyez sur "+ Nouveau revenu" pour commencer</p>
+            </div>`;
+        return;
+    }
+
+    incomesCache = incomes;
+
+    // Group by user
+    const byUser = {};
+    incomes.forEach(inc => {
+        if (!byUser[inc.user_name]) byUser[inc.user_name] = [];
+        byUser[inc.user_name].push(inc);
+    });
+
+    let html = '';
+    for (const [userName, items] of Object.entries(byUser)) {
+        const total = items.reduce((s, i) => s + parseFloat(i.amount), 0);
+        const memberIdx = getMemberIndex(userName);
+
+        html += `
+        <div class="budget-section">
+            <div class="budget-section-header">
+                <span>💰 ${escapeHtml(userName)}</span>
+                <span class="budget-section-total">${formatAmount(total)} € / mois</span>
+            </div>`;
+
+        items.forEach(inc => {
+            const isOwn = inc.user_id === CURRENT_USER.id;
+            html += `
+            <div class="expense-item ${isOwn ? 'income-editable' : ''}" data-income-id="${inc.id}">
+                <div class="expense-icon">💰</div>
+                <div class="expense-info">
+                    <div class="expense-name">${escapeHtml(inc.name)}</div>
+                    <div class="expense-meta">Le ${inc.day_of_month} de chaque mois</div>
+                </div>
+                <div class="expense-right">
+                    <span class="expense-amount income-amount">+${formatAmount(inc.amount)}&nbsp;€</span>
+                    ${isOwn ? '<span class="expense-chevron">›</span>' : ''}
+                </div>
+            </div>`;
+        });
+
+        html += `</div>`;
+    }
+
+    container.innerHTML = html;
+
+    // Only own incomes are clickable
+    container.querySelectorAll('.income-editable').forEach(item => {
+        item.addEventListener('click', () => {
+            const id  = parseInt(item.dataset.incomeId, 10);
+            const inc = incomesCache.find(i => i.id === id);
+            if (inc) openEditIncomeModal(inc);
+        });
+    });
+}
+
+// ─── Income Modal ────────────────────────────────────────────────
+const { modal: incomeModal, open: openIncomeOverlay, close: closeIncomeOverlay } = initModal('incomeModalOverlay', 'incomeModal', 'incomeModalClose');
+
+function openAddIncomeModal() {
+    editingIncomeId = null;
+    incomeModal.classList.remove('edit-mode');
+    document.getElementById('incomeModalTitle').textContent = 'Nouveau revenu';
+    document.getElementById('incomeSubmitBtn').textContent  = 'Créer';
+    document.getElementById('incomeForm').reset();
+    openIncomeOverlay();
+    setTimeout(() => document.getElementById('incomeName').focus(), 350);
+}
+
+function openEditIncomeModal(inc) {
+    editingIncomeId = inc.id;
+    incomeModal.classList.add('edit-mode');
+    document.getElementById('incomeModalTitle').textContent = 'Modifier le revenu';
+    document.getElementById('incomeSubmitBtn').textContent  = 'Enregistrer';
+    document.getElementById('incomeName').value   = inc.name;
+    document.getElementById('incomeAmount').value = inc.amount;
+    document.getElementById('incomeDay').value    = inc.day_of_month;
+    openIncomeOverlay();
+    setTimeout(() => document.getElementById('incomeName').focus(), 350);
+}
+
+function closeIncomeModal() {
+    closeIncomeOverlay();
+    document.getElementById('incomeForm').reset();
+    document.getElementById('incomeSubmitBtn').disabled = false;
+    editingIncomeId = null;
+}
+
+document.getElementById('incomeModalClose').addEventListener('click', closeIncomeModal);
+document.getElementById('addIncomeBtn').addEventListener('click', openAddIncomeModal);
+
+document.getElementById('incomeDeleteBtn').addEventListener('click', async () => {
+    if (!editingIncomeId || !confirm('Supprimer ce revenu ?')) return;
+    try {
+        await apiDelete(`/api/incomes.php?id=${editingIncomeId}`);
+        closeIncomeModal(); loadIncomes();
+    } catch { alert('Erreur lors de la suppression.'); }
+});
+
+document.getElementById('incomeForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const name         = document.getElementById('incomeName').value.trim();
+    const amount       = parseFloat(document.getElementById('incomeAmount').value);
+    const day_of_month = parseInt(document.getElementById('incomeDay').value, 10);
+
+    if (!name || isNaN(amount) || amount <= 0 || isNaN(day_of_month)) return;
+
+    const btn = document.getElementById('incomeSubmitBtn');
+    btn.disabled = true;
+
+    try {
+        const url    = editingIncomeId ? `/api/incomes.php?id=${editingIncomeId}` : '/api/incomes.php';
+        const method = editingIncomeId ? 'PUT' : 'POST';
+        await apiSend(url, method, { name, amount, day_of_month });
+        closeIncomeModal(); loadIncomes();
+    } catch (err) {
+        alert('Erreur : ' + err.message);
+        btn.disabled = false;
+    }
+});
+
 // ─── Init ─────────────────────────────────────────────────────────
 loadBudgets();
+loadIncomes();

@@ -1041,6 +1041,66 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     margin-top: 4px;
 }
 
+/* ─── Suivi mensuel: revenus & virements ─────────────────────────── */
+.suivi-section {
+    margin-bottom: 16px;
+}
+
+.suivi-section-title {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-secondary);
+    margin: 0 0 8px 4px;
+}
+
+.income-amount {
+    color: #34c759 !important;
+}
+
+.income-preview {
+    opacity: 0.45;
+}
+
+.transfer-amount {
+    color: var(--accent-hover) !important;
+}
+
+.transfer-item {
+    cursor: pointer;
+}
+
+/* Section divider (budget page) */
+.section-divider {
+    height: 1px;
+    background: var(--card-border);
+    margin: 24px 0 16px;
+}
+
+/* Dual add buttons */
+.add-btn-wrapper--dual {
+    display: flex;
+    gap: 8px;
+}
+
+.add-btn-wrapper--dual .add-btn {
+    flex: 1;
+    font-size: 13px;
+}
+
+.add-btn--secondary {
+    background: var(--card-bg) !important;
+    border: 1px solid var(--card-border) !important;
+    color: var(--text-primary) !important;
+}
+
+.add-btn--transfer {
+    background: rgba(124,111,247,0.15) !important;
+    border: 1px solid rgba(124,111,247,0.35) !important;
+    color: var(--accent-hover) !important;
+}
+
 /* ─── Desktop adjustments ────────────────────────────────────────── */
 @media (min-width: 480px) {
     .app {

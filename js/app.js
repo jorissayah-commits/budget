@@ -7,6 +7,8 @@ let currentMonth  = now.getMonth();
 let editingId     = null;
 let allBudgets    = [];
 let expensesCache = [];
+let allIncomes    = [];
+let transfersCache = [];
 
 // ─── Month helpers ────────────────────────────────────────────────
 function getMonthKey() {
@@ -15,6 +17,44 @@ function getMonthKey() {
 
 function getMonthTitle() {
     return `${MONTHS_FR[currentMonth]} ${currentYear}`;
+}
+
+// ─── Render incomes ──────────────────────────────────────────────
+function renderIncomes() {
+    const container = document.getElementById('incomesContainer');
+    if (allIncomes.length === 0) { container.innerHTML = ''; return; }
+
+    const today = new Date();
+    const viewingCurrentMonth = (currentYear === today.getFullYear() && currentMonth === today.getMonth());
+    const viewingPast = (currentYear < today.getFullYear()) || (currentYear === today.getFullYear() && currentMonth < today.getMonth());
+    const currentDay = today.getDate();
+
+    // Compute days in the viewed month
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+    let html = '<div class="suivi-section"><div class="suivi-section-title">💰 Revenus</div>';
+
+    allIncomes.forEach(inc => {
+        const day = Math.min(inc.day_of_month, daysInMonth);
+        const isPast = viewingPast || (viewingCurrentMonth && currentDay >= day);
+        const isFuture = !isPast;
+        const dateStr = `${day} ${MONTHS_FR[currentMonth].substring(0, 3).toUpperCase()}`;
+
+        html += `
+        <div class="expense-item ${isFuture ? 'income-preview' : ''}">
+            <div class="expense-icon">💰</div>
+            <div class="expense-info">
+                <div class="expense-name">${escapeHtml(inc.name)}</div>
+                <div class="expense-meta">${escapeHtml(inc.user_name)} · ${dateStr}${isFuture ? ' · prévu' : ''}</div>
+            </div>
+            <div class="expense-right">
+                <span class="expense-amount income-amount">+${formatAmount(inc.amount)}&nbsp;€</span>
+            </div>
+        </div>`;
+    });
+
+    html += '</div>';
+    container.innerHTML = html;
 }
 
 // ─── Render expenses ──────────────────────────────────────────────
@@ -75,6 +115,41 @@ function renderExpenses(expenses) {
     });
 }
 
+// ─── Render transfers ────────────────────────────────────────────
+function renderTransfers() {
+    const container = document.getElementById('transfersContainer');
+    if (!IS_COUPLE_MODE || transfersCache.length === 0) { container.innerHTML = ''; return; }
+
+    let html = '<div class="suivi-section"><div class="suivi-section-title">↗ Virements</div>';
+
+    transfersCache.forEach(t => {
+        const dateStr = formatDayLabel(t.date);
+        html += `
+        <div class="expense-item transfer-item" data-transfer-id="${t.id}">
+            <div class="expense-icon">↗</div>
+            <div class="expense-info">
+                <div class="expense-name">Virement à ${escapeHtml(t.to_user)}</div>
+                <div class="expense-meta">${escapeHtml(t.from_user)} → ${escapeHtml(t.to_user)} · ${dateStr}</div>
+            </div>
+            <div class="expense-right">
+                <span class="expense-amount transfer-amount">${formatAmount(t.amount)}&nbsp;€</span>
+            </div>
+        </div>`;
+    });
+
+    html += '</div>';
+    container.innerHTML = html;
+
+    container.querySelectorAll('.transfer-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const id = parseInt(item.dataset.transferId, 10);
+            if (confirm('Supprimer ce virement ?')) {
+                apiDelete(`/api/transfers.php?id=${id}`).then(() => loadAll()).catch(() => alert('Erreur'));
+            }
+        });
+    });
+}
+
 async function loadExpenses() {
     const container = document.getElementById('expensesContainer');
     container.innerHTML = '<div class="loading">Chargement…</div>';
@@ -86,6 +161,21 @@ async function loadExpenses() {
     }
 }
 
+async function loadTransfers() {
+    if (!IS_COUPLE_MODE) return;
+    try {
+        transfersCache = await apiFetch(`/api/transfers.php?month=${encodeURIComponent(getMonthKey())}`);
+        renderTransfers();
+    } catch {
+        transfersCache = [];
+    }
+}
+
+async function loadAll() {
+    renderIncomes();
+    await Promise.all([loadExpenses(), loadTransfers()]);
+}
+
 // ─── Month nav ────────────────────────────────────────────────────
 function updateMonthDisplay() {
     document.getElementById('monthTitle').textContent = getMonthTitle();
@@ -94,17 +184,16 @@ function updateMonthDisplay() {
 document.getElementById('prevMonth').addEventListener('click', () => {
     currentMonth--;
     if (currentMonth < 0) { currentMonth = 11; currentYear--; }
-    updateMonthDisplay(); loadExpenses();
+    updateMonthDisplay(); loadAll();
 });
 
 document.getElementById('nextMonth').addEventListener('click', () => {
     currentMonth++;
     if (currentMonth > 11) { currentMonth = 0; currentYear++; }
-    updateMonthDisplay(); loadExpenses();
+    updateMonthDisplay(); loadAll();
 });
 
 // ─── Budget picker ────────────────────────────────────────────────
-// pourValue : 'foyer' | nom d'un membre (ex: 'Joris')
 function renderBudgetPicker(pourValue, selectedId = null) {
     const picker   = document.getElementById('budgetPicker');
     const filtered = allBudgets.filter(b => {
@@ -141,7 +230,6 @@ function renderBudgetPicker(pourValue, selectedId = null) {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────
-// Reconstruit la valeur "pour" (toggle) depuis les données d'une dépense existante
 function getPourValue(exp) {
     if (!exp.for_whom) return 'foyer';
     const names = exp.for_whom.split(',').map(s => s.trim()).filter(Boolean);
@@ -150,7 +238,6 @@ function getPourValue(exp) {
     return 'foyer';
 }
 
-// Libellé d'affichage dans la liste des dépenses
 function getPourLabel(forWhom) {
     if (!forWhom) return 'Foyer';
     const names = forWhom.split(',').map(s => s.trim()).filter(Boolean);
@@ -159,7 +246,7 @@ function getPourLabel(forWhom) {
     return 'Foyer';
 }
 
-// ─── Modal ────────────────────────────────────────────────────────
+// ─── Expense Modal ───────────────────────────────────────────────
 const { modal, open: openOverlay, close: closeOverlay } = initModal('modalOverlay', 'modal', 'modalClose');
 
 const paidByToggle = IS_COUPLE_MODE
@@ -193,7 +280,6 @@ function openEditModal(exp) {
     document.getElementById('expenseAmount').value    = exp.amount;
     document.getElementById('expenseDate').value      = exp.date;
 
-    // Reconstruire la valeur "pour" depuis for_whom
     const pourValue = getPourValue(exp);
     if (paidByToggle) paidByToggle.setValues([exp.paid_by || MEMBERS[0].name]);
     typeToggle.setValues([pourValue]);
@@ -212,16 +298,14 @@ function closeModal() {
 document.getElementById('modalClose').addEventListener('click', closeModal);
 document.getElementById('addBtn').addEventListener('click', openAddModal);
 
-// ─── Delete ──────────────────────────────────────────────────────
 document.getElementById('deleteBtn').addEventListener('click', async () => {
     if (!editingId || !confirm('Supprimer cette dépense ?')) return;
     try {
         await apiDelete(`/api/expenses.php?id=${editingId}`);
-        closeModal(); loadExpenses();
+        closeModal(); loadAll();
     } catch { alert('Impossible de supprimer.'); }
 });
 
-// ─── Submit ──────────────────────────────────────────────────────
 document.getElementById('expenseForm').addEventListener('submit', async e => {
     e.preventDefault();
     const name      = document.getElementById('expenseName').value.trim();
@@ -233,12 +317,9 @@ document.getElementById('expenseForm').addEventListener('submit', async e => {
 
     if (!name || isNaN(amount) || amount <= 0) return;
 
-    // for_whom dérivé de "pour" :
-    //   foyer    → tous les membres du foyer
-    //   prénom   → ce membre uniquement
     const for_whom = expType === 'foyer'
         ? MEMBERS.map(m => m.name).join(',')
-        : expType; // le nom du membre sélectionné
+        : expType;
 
     const btn = document.getElementById('submitBtn');
     btn.disabled = true;
@@ -248,7 +329,7 @@ document.getElementById('expenseForm').addEventListener('submit', async e => {
         const data = { name, amount, paid_by, for_whom, budget_id, date };
         const url  = editingId ? `/api/expenses.php?id=${editingId}` : '/api/expenses.php';
         await apiSend(url, editingId ? 'PUT' : 'POST', data);
-        closeModal(); loadExpenses();
+        closeModal(); loadAll();
     } catch (err) {
         alert('Erreur : ' + err.message);
         btn.disabled = false;
@@ -256,7 +337,52 @@ document.getElementById('expenseForm').addEventListener('submit', async e => {
     }
 });
 
+// ─── Transfer Modal ──────────────────────────────────────────────
+if (IS_COUPLE_MODE) {
+    const { modal: transferModal, open: openTransferOverlay, close: closeTransferOverlay } = initModal('transferModalOverlay', 'transferModal', 'transferModalClose');
+
+    const partner = MEMBERS.find(m => m.id !== CURRENT_USER.id);
+
+    document.getElementById('addTransferBtn').addEventListener('click', () => {
+        transferModal.classList.remove('edit-mode');
+        document.getElementById('transferForm').reset();
+        document.getElementById('transferDate').value = todayISO();
+        document.getElementById('transferModalTitle').textContent = `Virement à ${partner ? partner.name : 'partenaire'}`;
+        openTransferOverlay();
+        setTimeout(() => document.getElementById('transferAmount').focus(), 350);
+    });
+
+    document.getElementById('transferForm').addEventListener('submit', async e => {
+        e.preventDefault();
+        const amount = parseFloat(document.getElementById('transferAmount').value);
+        const date   = document.getElementById('transferDate').value;
+
+        if (isNaN(amount) || amount <= 0) return;
+
+        const btn = document.getElementById('transferSubmitBtn');
+        btn.disabled = true;
+
+        try {
+            await apiSend('/api/transfers.php', 'POST', {
+                to_user: partner.name,
+                amount,
+                date
+            });
+            closeTransferOverlay();
+            document.getElementById('transferForm').reset();
+            btn.disabled = false;
+            loadAll();
+        } catch (err) {
+            alert('Erreur : ' + err.message);
+            btn.disabled = false;
+        }
+    });
+}
+
 // ─── Init ─────────────────────────────────────────────────────────
 updateMonthDisplay();
-apiFetch('/api/budgets.php').then(b => { allBudgets = b; }).catch(() => {});
-loadExpenses();
+
+Promise.all([
+    apiFetch('/api/budgets.php').then(b => { allBudgets = b; }).catch(() => {}),
+    apiFetch('/api/incomes.php').then(i => { allIncomes = i; }).catch(() => {}),
+]).then(() => loadAll());

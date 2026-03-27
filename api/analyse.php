@@ -89,11 +89,34 @@ foreach ($expenses as $exp) {
     }
 }
 
+// ─── Virements : ajustent la balance ──────────────────────────────
+// Un virement de A vers B = A a payé B, donc balance[A] += amount, balance[B] -= amount
+$transferAdj = [];
+foreach ($members as $m) { $transferAdj[$m['name']] = 0.0; }
+
+$stmtT = $pdo->prepare("
+    SELECT from_user, to_user, amount
+    FROM transfers
+    WHERE foyer_id = ? AND strftime('%Y-%m', date) = ?
+");
+$stmtT->execute([$foyerId, $month]);
+$transfers = $stmtT->fetchAll();
+
+$transferTotal = 0.0;
+foreach ($transfers as $t) {
+    $amt = (float)$t['amount'];
+    $from = trim($t['from_user']);
+    $to   = trim($t['to_user']);
+    $transferTotal += $amt;
+    if (array_key_exists($from, $transferAdj)) $transferAdj[$from] += $amt;
+    if (array_key_exists($to,   $transferAdj)) $transferAdj[$to]   -= $amt;
+}
+
 // Construire la réponse
 $membersResult = [];
 foreach ($members as $m) {
     $name    = $m['name'];
-    $balance = ($paid[$name] ?? 0.0) - ($share[$name] ?? 0.0);
+    $balance = ($paid[$name] ?? 0.0) - ($share[$name] ?? 0.0) + ($transferAdj[$name] ?? 0.0);
     $membersResult[] = [
         'id'      => $m['id'],
         'name'    => $name,
@@ -104,8 +127,9 @@ foreach ($members as $m) {
 }
 
 echo json_encode([
-    'month'        => $month,
-    'foyer_total'  => round($foyerTotal, 2),
-    'commun_total' => round($communTotal, 2),
-    'members'      => $membersResult,
+    'month'          => $month,
+    'foyer_total'    => round($foyerTotal, 2),
+    'commun_total'   => round($communTotal, 2),
+    'transfer_total' => round($transferTotal, 2),
+    'members'        => $membersResult,
 ]);

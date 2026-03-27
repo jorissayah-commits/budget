@@ -9,6 +9,9 @@
         <button class="nav-btn" id="nextMonth" aria-label="Mois suivant">&#8250;</button>
     </header>
 
+    <!-- Revenus du mois -->
+    <div id="incomesContainer"></div>
+
     <!-- Liste des dépenses -->
     <div class="expenses-container" id="expensesContainer">
         <div class="empty-state">
@@ -16,6 +19,9 @@
             <p>Aucune dépense ce mois</p>
         </div>
     </div>
+
+    <!-- Virements -->
+    <div id="transfersContainer"></div>
 
 </div>
 
@@ -25,6 +31,12 @@
         <span class="add-icon">+</span>
         Ajouter une dépense
     </button>
+    <?php if (count($foyerMembers) >= 2): ?>
+    <button class="add-btn add-btn--transfer" id="addTransferBtn">
+        <span class="add-icon">↗</span>
+        Virement à <?= htmlspecialchars(array_values(array_filter($foyerMembers, fn($m) => $m['id'] !== $currentUser['id']))[0]['name'] ?? 'partenaire') ?>
+    </button>
+    <?php endif; ?>
 </div>
 
 <?php include 'includes/nav.php'; ?>
@@ -90,6 +102,33 @@
         </form>
     </div>
 </div>
+
+<?php if (count($foyerMembers) >= 2): ?>
+<!-- Modal virement -->
+<div class="modal-overlay" id="transferModalOverlay" role="dialog" aria-modal="true">
+    <div class="modal" id="transferModal">
+        <div class="modal-handle"></div>
+        <div class="modal-header">
+            <h2 id="transferModalTitle">Nouveau virement</h2>
+            <button class="modal-close" id="transferModalClose" aria-label="Fermer">&times;</button>
+        </div>
+        <form id="transferForm" novalidate>
+            <div class="form-group">
+                <label for="transferAmount">Montant</label>
+                <div class="input-with-suffix">
+                    <input type="number" id="transferAmount" placeholder="0,00" step="0.01" min="0.01" inputmode="decimal" required>
+                    <span class="input-suffix">€</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="transferDate">Date</label>
+                <input type="date" id="transferDate" required>
+            </div>
+            <button type="submit" class="submit-btn" id="transferSubmitBtn">Envoyer</button>
+        </form>
+    </div>
+</div>
+<?php endif; ?>
 
 <script src="js/shared.js"></script>
 <script src="js/app.js"></script>
