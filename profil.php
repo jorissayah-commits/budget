@@ -59,6 +59,43 @@
         </div>
     </div>
 
+    <!-- ─── Banques connectées ──────────────────────────── -->
+    <div class="foyer-section">
+        <div class="foyer-section-header">Banques connectées</div>
+        <div id="bridgeStatus"><p class="foyer-section-desc">Chargement…</p></div>
+        <div id="bridgeAccounts" style="margin-bottom:14px;"></div>
+        <button class="submit-btn" id="bridgeConnectBtn" style="display:none;">+ Connecter une banque</button>
+        <button class="delete-btn" id="bridgeDisconnectBtn" style="display:none;margin-top:10px;">Déconnecter</button>
+    </div>
+
+    <!-- Modal import transactions Bridge -->
+    <div class="modal-overlay" id="bridgeImportOverlay">
+        <div class="modal" id="bridgeImportModal">
+            <div class="modal-handle"></div>
+            <div class="modal-header">
+                <h2>Importer des transactions</h2>
+                <button class="modal-close" id="bridgeImportClose">✕</button>
+            </div>
+            <div class="form-group">
+                <label for="bridgeAccountSel">Compte</label>
+                <div class="select-wrapper">
+                    <select id="bridgeAccountSel"><option value="">— choisir —</option></select>
+                    <i class="select-arrow">›</i>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="bridgeMonthSel">Mois</label>
+                <div class="select-wrapper">
+                    <select id="bridgeMonthSel"></select>
+                    <i class="select-arrow">›</i>
+                </div>
+            </div>
+            <button class="submit-btn" id="bridgeFetchBtn">Charger les transactions</button>
+            <div id="bridgeTxList" style="margin-top:18px;"></div>
+            <button class="submit-btn" id="bridgeImportConfirm" style="display:none;margin-top:10px;">Importer la sélection</button>
+        </div>
+    </div>
+
     <!-- ─── Déconnexion ────────────────────────────────────── -->
     <div class="foyer-section">
         <a href="api/logout.php" class="logout-btn">Se déconnecter</a>
@@ -70,5 +107,6 @@
 
 <script src="js/shared.js"></script>
 <script src="js/profil.js"></script>
+<script src="js/bridge.js"></script>
 </body>
 </html>

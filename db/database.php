@@ -119,6 +119,16 @@ try {
         )
     ");
 
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS bridge_users (
+            id               INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id          INTEGER NOT NULL UNIQUE REFERENCES users(id),
+            bridge_email     TEXT    NOT NULL,
+            bridge_password  TEXT    NOT NULL,
+            created_at       DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ");
+
 } catch (PDOException $e) {
     http_response_code(500);
     die(json_encode(['error' => 'Erreur base de données : ' . $e->getMessage()]));
