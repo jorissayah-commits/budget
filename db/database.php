@@ -123,8 +123,8 @@ try {
         CREATE TABLE IF NOT EXISTS bridge_users (
             id               INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id          INTEGER NOT NULL UNIQUE REFERENCES users(id),
-            bridge_email     TEXT    NOT NULL,
-            bridge_password  TEXT    NOT NULL,
+            bridge_uuid      TEXT    NOT NULL DEFAULT '',
+            external_user_id TEXT    NOT NULL,
             created_at       DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     ");
